@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DealStatus {
+  DRAFT
+  PENDING_PARTICIPANTS
+  PENDING_FUNDING
+  FUNDED
+  DUE_DILIGENCE
+  RELEASE_REQUESTED
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantRole {
+  BUYER
+  SELLER
+  LAWYER
+  AGENT
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum EscrowStatus {
+  PENDING
+  PARTIALLY_FUNDED
+  FUNDED
+  RELEASED
+  REFUNDED
+  FAILED
+}
+
+enum TransactionType {
+  DEPOSIT
+  RELEASE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model User {
+  id                String   @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String   @unique
+  phone             String?  @unique
+  password          String
+  avatar            String?
+  status            UserStatus @default(ACTIVE)
+  isEmailVerified   Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdDeals      Deal[]              @relation("DealCreator")
+  participants      DealParticipant[]
+  acceptedInvitations Invitation[] @relation("InvitationReceiver")
+  sentInvitations Invitation[] @relation("InvitationSender")
+  refreshTokens     RefreshToken[]
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  tokenHash   String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId       String
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Deal {
+  id                String      @id @default(cuid())
+  title             String
+  description       String?
+  propertyAddress   String
+  propertyType      String
+  dealValue         Decimal     @db.Decimal(15,2)
+  currency          String      @default("NGN")
+  closingDate       DateTime?
+  status            DealStatus  @default(DRAFT)
+  reference         String @unique
+  creatorId         String
+  creator           User        @relation("DealCreator", fields: [creatorId], references: [id])
+  participants      DealParticipant[]
+  escrow            Escrow?
+  invitations       Invitation[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model DealParticipant {
+  id          String @id @default(cuid())
+  dealId      String
+  userId      String
+  role        ParticipantRole
+  status      ParticipantStatus @default(PENDING)
+  joinedAt    DateTime?
+  deal        Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([dealId, userId])
+}
+
+model Escrow {
+  id                  String @id @default(cuid())
+  dealId              String @unique
+  amount              Decimal @db.Decimal(15,2)
+  fundedAmount        Decimal @default(0) @db.Decimal(15,2)
+  status              EscrowStatus @default(PENDING)
+  provider            String @default("NOMBA")
+  providerReference   String?
+  paymentReference    String? @unique
+  fundedAt            DateTime?
+  releasedAt          DateTime?
+  deal                Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  transactions        EscrowTransaction[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model EscrowTransaction {
+  id                  String @id @default(cuid())
+  escrowId            String
+  reference           String @unique
+  providerReference   String? @unique
+  currency            String @default("NGN")
+  type                TransactionType
+  status              TransactionStatus
+  amount              Decimal @db.Decimal(15,2)
+  webhookPayload      Json?
+  escrow              Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+}
+
+model Invitation {
+  id           String @id @default(cuid())
+  dealId       String
+  email        String
+  role         ParticipantRole
+  status       InvitationStatus @default(PENDING)
+  token        String @unique
+  expiresAt    DateTime
+  acceptedById String?
+  acceptedBy   User? @relation("InvitationReceiver", fields: [acceptedById], references: [id])
+  invitedById  String
+  invitedBy    User @relation("InvitationSender", fields: [invitedById], references: [id])
+  deal         Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
