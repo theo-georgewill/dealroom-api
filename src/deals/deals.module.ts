@@ -4,10 +4,12 @@ import { DealsController } from './deals.controller';
 import { DealsService } from './deals.service';
 
 import { PrismaModule } from '../prisma/prisma.module';
+import { InvitationsModule } from '../invitations/invitations.module';
 
 @Module({
   imports: [
     PrismaModule,
+    InvitationsModule,
   ],
   controllers: [
     DealsController,
