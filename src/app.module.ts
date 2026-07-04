@@ -7,6 +7,7 @@ import { DealsModule } from './deals/deals.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { EscrowModule } from './escrow/escrow.module';
 import { PaymentsModule } from './payments/payments.module';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -21,5 +22,6 @@ import { PaymentsModule } from './payments/payments.module';
     EscrowModule, 
     PaymentsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
