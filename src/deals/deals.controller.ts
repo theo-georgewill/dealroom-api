@@ -29,7 +29,10 @@ import { CreateInvitationDto } from '../invitations/dto/create-invitation.dto';
 @ApiTags('Deals')
 @ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard)
-@Controller('deals')
+@Controller({
+  path: 'deals',
+  version: '1',
+})
 export class DealsController {
   constructor(
     private readonly dealsService: DealsService,

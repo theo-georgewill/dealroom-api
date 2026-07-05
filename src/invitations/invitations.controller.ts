@@ -19,7 +19,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Invitations')
-@Controller('invitations')
+@Controller({
+  path: 'invitations',
+  version: '1',
+})
 export class InvitationsController {
   constructor(
     private readonly invitationsService: InvitationsService,

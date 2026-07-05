@@ -23,7 +23,10 @@ import { EscrowService } from './escrow.service';
 @ApiTags('Escrow')
 @ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard)
-@Controller('deals/:dealId/escrow')
+@Controller({
+  path: 'deals/:dealId/escrow',
+  version: '1',
+})
 export class EscrowController {
   constructor(
     private readonly escrowService: EscrowService,

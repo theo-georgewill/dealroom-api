@@ -23,7 +23,10 @@ import { InitializePaymentDto } from './dto/initialize-payment.dto';
 import { NombaWebhookDto } from './dto/nomba-webhook.dto';
 
 @ApiTags('Payments')
-@Controller('payments')
+@Controller({
+  path: 'payments',
+  version: '1',
+})
 export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
