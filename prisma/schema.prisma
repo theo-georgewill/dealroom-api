@@ -17,6 +17,7 @@ enum DealStatus {
   PENDING_FUNDING
   FUNDED
   DUE_DILIGENCE
+  DISPUTED
   RELEASE_REQUESTED
   COMPLETED
   CANCELLED
@@ -39,6 +40,7 @@ enum EscrowStatus {
   PENDING
   PARTIALLY_FUNDED
   FUNDED
+  RELEASING
   RELEASED
   REFUNDED
   FAILED
@@ -69,6 +71,24 @@ enum InvitationStatus {
   EXPIRED
 }
 
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum TransferStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentProvider {
+  NOMBA
+}
 model User {
   id                String   @id @default(cuid())
   firstName         String
@@ -137,26 +157,62 @@ model DealParticipant {
 }
 
 model Escrow {
-  id                  String @id @default(cuid())
-  dealId              String @unique
-  amount              Decimal @db.Decimal(15,2)
-  fundedAmount        Decimal @default(0) @db.Decimal(15,2)
-  status              EscrowStatus @default(PENDING)
-  provider            String @default("NOMBA")
-  providerReference   String?
-  paymentReference    String? @unique
-  fundedAt            DateTime?
-  releasedAt          DateTime?
-  deal                Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  transactions        EscrowTransaction[]
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id           String @id @default(cuid())
+  dealId       String @unique
+  amount       Decimal @db.Decimal(15,2)
+  fundedAmount Decimal @default(0) @db.Decimal(15,2)
+  status       EscrowStatus @default(PENDING)
+  fundedAt     DateTime?
+  releasedAt   DateTime?
+  deal         Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  transfers     Transfer[]
+  transactions  EscrowTransaction[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
+model Payment {
+  id                 String @id @default(cuid())
+  escrowId           String
+  escrow             Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  merchantTxRef      String @unique
+  checkoutReference  String?
+  providerReference  String?
+  provider           PaymentProvider @default(NOMBA)
+  amount             Decimal @db.Decimal(15,2)
+  currency           String @default("NGN")
+  status             PaymentStatus @default(PENDING)
+  paidAt             DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([merchantTxRef])
+  @@index([status])
+}
+model Transfer {
+  id                 String @id @default(cuid())
+  escrowId           String
+  escrow             Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  merchantTxRef      String @unique
+  providerReference  String?
+  bankCode           String
+  accountNumber      String
+  accountName        String
+  amount             Decimal @db.Decimal(15,2)
+  currency           String @default("NGN")
+  status             TransferStatus @default(PENDING)
+  completedAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  @@index([merchantTxRef])
+  @@index([status])
+}
 model EscrowTransaction {
   id                  String @id @default(cuid())
   escrowId            String
-  reference           String @unique
+  ledgerReference     String @unique
   providerReference   String? @unique
   currency            String @default("NGN")
   type                TransactionType
@@ -165,6 +221,10 @@ model EscrowTransaction {
   webhookPayload      Json?
   escrow              Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
   createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([escrowId])
+  @@index([status])
 }
 
 model Invitation {
@@ -184,8 +244,14 @@ model Invitation {
 }
 
 model WebhookEvent {
-  id         String   @id @default(cuid())
-  requestId  String   @unique
-  eventType  String
-  createdAt  DateTime @default(now())
+  id          String @id @default(cuid())
+  requestId   String @unique
+  eventType   String
+  signature   String
+  payload     Json
+  processed   Boolean @default(false)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([processed])
 }

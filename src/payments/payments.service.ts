@@ -1,23 +1,48 @@
+import * as crypto from 'crypto';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { InitializePaymentDto } from './dto/initialize-payment.dto';
 import { NombaService } from './nomba/nomba.service';
 import { NombaWebhookDto } from './dto/nomba-webhook.dto';
+import { InitializePaymentDto } from './dto/initialize-payment.dto';
+import { instanceToPlain } from 'class-transformer';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly nomba: NombaService,
+    private readonly configService: ConfigService,
   ) {}
 
+  private verifyWebhookSignature(
+    signature: string,
+    payload: NombaWebhookDto,
+  ): void {
+    const expected = crypto
+      .createHmac(
+        'sha256',
+        this.configService.getOrThrow<string>(
+          'NOMBA_WEBHOOK_SECRET',
+        ),
+      )
+      .update(JSON.stringify(payload))
+      .digest('hex');
+
+    if (signature !== expected) {
+      throw new UnauthorizedException(
+        'Invalid webhook signature',
+      );
+    }
+  }
+  
   async initialize(
     userId: string,
     dto: InitializePaymentDto,
@@ -86,24 +111,24 @@ export class PaymentsService {
       );
     }
 
-    const reference = randomUUID();
+    const merchantTxRef = `pay_${crypto.randomUUID()}`;
 
     const payment =
       await this.nomba.initializePayment({
         amount: dto.amount,
-        reference,
+        reference: merchantTxRef,
         email: user.email,
       });
 
-    await this.prisma.escrowTransaction.create({
+    await this.prisma.payment.create({
       data: {
         escrowId: escrow.id,
+        merchantTxRef,
+        checkoutReference: payment.data.orderReference,
+        providerReference: null,
         amount: new Prisma.Decimal(dto.amount),
-        type: 'DEPOSIT',
+        currency: 'NGN',
         status: 'PENDING',
-        reference,
-        providerReference:
-          payment.data.orderReference,
       },
     });
 
@@ -111,7 +136,8 @@ export class PaymentsService {
       success: true,
       message: 'Checkout initialized',
       data: {
-        checkoutUrl: payment.data.checkoutUrl,
+        checkoutUrl: 
+          payment.data.checkoutUrl,
         orderReference:
           payment.data.orderReference,
       },
@@ -119,8 +145,14 @@ export class PaymentsService {
   }
 
   async webhook(
+    signature: string,
     payload: NombaWebhookDto,
   ) {
+    this.verifyWebhookSignature(
+      signature, 
+      payload
+    );
+
     const existing =
       await this.prisma.webhookEvent.findUnique({
         where: {
@@ -135,47 +167,76 @@ export class PaymentsService {
       };
     }
 
-    const transaction =
-      await this.prisma.escrowTransaction.findFirst({
+    const paymentRecord =
+      await this.prisma.payment.findUnique({
         where: {
-          reference: payload.data.merchantTxRef,
+          merchantTxRef:
+            payload.data.transaction.merchantTxRef,
         },
         include: {
           escrow: true,
         },
       });
 
-    if (!transaction) {
+    if (!paymentRecord) {
       throw new NotFoundException(
-        'Transaction not found',
+        'Payment not found',
       );
     }
 
-    if (payload.event !== 'payment_success') {
+    if (payload.event_type !== 'payment_success') {
       return {
         success: true,
         message: 'Event ignored',
       };
     }
 
+    const rawPayload = JSON.parse(
+      JSON.stringify(instanceToPlain(payload)),
+    ) as Prisma.InputJsonValue;
+
     return this.prisma.$transaction(async (tx) => {
-      await tx.escrowTransaction.update({
-        where: {
-          id: transaction.id,
-        },
+      await tx.webhookEvent.create({
         data: {
-          status: 'SUCCESS',
+          requestId: payload.requestId,
+          eventType: payload.event_type,
+          signature,
+          payload: rawPayload,
         },
       });
 
+      await tx.payment.update({
+        where: {
+          id: paymentRecord.id,
+        },
+        data: {
+          status: 'SUCCESS',
+          paidAt: new Date(),
+        },
+      });
+
+      await tx.escrowTransaction.create({
+        data: {
+          escrowId: paymentRecord.escrowId,
+          ledgerReference: paymentRecord.merchantTxRef,
+          providerReference: paymentRecord.providerReference,
+          amount: new Prisma.Decimal(
+            payload.data.transaction.transactionAmount,
+          ),
+          currency: paymentRecord.currency,
+          type: 'DEPOSIT',
+          status: 'SUCCESS',
+          webhookPayload: rawPayload,
+        },
+      });
       const escrow = await tx.escrow.update({
         where: {
-          id: transaction.escrowId,
+          id: paymentRecord.escrowId,
         },
         data: {
           fundedAmount: {
             increment: new Prisma.Decimal(
-              payload.data.amount,
+              payload.data.transaction.transactionAmount
             ),
           },
         },
