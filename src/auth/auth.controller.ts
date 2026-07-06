@@ -31,16 +31,39 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
-  private setRefreshTokenCookie(
+  private setAuthCookies(
     res: Response,
+    accessToken: string,
     refreshToken: string,
   ) {
-    res.cookie('refreshToken', refreshToken, {
+    const commonOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+
+    res.cookie('accessToken', accessToken, {
+      ...commonOptions,
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
+
+    res.cookie('refreshToken', refreshToken, {
+      ...commonOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+  }
+
+  private clearAuthCookies(res: Response) {
+    const commonOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+
+    res.clearCookie('accessToken', commonOptions);
+    res.clearCookie('refreshToken', commonOptions);
   }
 
   @Post('register')
@@ -70,11 +93,16 @@ export class AuthController {
   ) {
     const result = await this.authService.register(dto);
 
-    const { refreshToken, ...response } = result;
+    const { refreshToken, data, ...response } = result;
 
-    this.setRefreshTokenCookie(res, refreshToken);
+    this.setAuthCookies(res, data.accessToken, refreshToken);
 
-    return response;
+    return {
+      ...response,
+      data: {
+        user: data.user,
+      },
+    };
   }
 
   @Post('login')
@@ -100,10 +128,42 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto);
 
-    const { refreshToken, ...response } = result;
+    const { refreshToken, data, ...response } = result;
 
-    this.setRefreshTokenCookie(res, refreshToken);
+    this.setAuthCookies(res, data.accessToken, refreshToken);
 
-    return response;
+    return {
+      ...response,
+      data: {
+        user: data.user,
+      },
+    };
+  }
+
+  @Post('logout')
+  @ApiOperation({
+    summary: 'Log out the current user',
+    description:
+      'Clears the access and refresh token cookies, effectively ending the current authenticated session.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged out successfully.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Logged out successfully',
+      },
+    },
+  })
+  logout(
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.clearAuthCookies(res);
+
+    return {
+      success: true,
+      message: 'Logged out successfully',
+    };
   }
 }
