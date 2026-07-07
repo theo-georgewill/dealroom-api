@@ -121,6 +121,51 @@ export class AuthService {
     });
   }
 
+  async refresh(refreshToken: string) {
+    try {
+      // Verify JWT signature and expiration
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET!,
+      });
+
+      // Find stored refresh token
+      const storedToken = await this.prisma.refreshToken.findFirst({
+        where: {
+          userId: payload.sub,
+        },
+      });
+
+      if (!storedToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Compare incoming token with hashed token in DB
+      const isValid = await bcrypt.compare(
+        refreshToken,
+        storedToken.tokenHash,
+      );
+
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Get latest user
+      const user = await this.usersService.findById(payload.sub);
+
+      if (!user) {
+        throw new UnauthorizedException();
+      }
+
+      // Issue fresh tokens and rotate refresh token
+      return this.buildAuthResponse(
+        user,
+        'Token refreshed successfully',
+      );
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+  
   private async buildAuthResponse(
     user: {
       id: string;

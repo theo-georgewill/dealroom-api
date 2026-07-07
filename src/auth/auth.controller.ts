@@ -4,7 +4,9 @@ import {
   Get,
   Post,
   Res,
+  Req,
   UseGuards,
+  UnauthorizedException
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -13,13 +15,14 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+
 
 @ApiTags('Authentication')
 @Controller({
@@ -164,6 +167,39 @@ export class AuthController {
     return {
       success: true,
       message: 'Logged out successfully',
+    };
+  }
+
+  @Post('refresh')
+  @ApiOperation({
+    summary: 'Refresh access token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Access token refreshed successfully.',
+  })
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token missing');
+    }
+
+    const result = await this.authService.refresh(refreshToken);
+
+    const { refreshToken: newRefreshToken, data } = result;
+
+    this.setAuthCookies(
+      res,
+      data.accessToken,
+      newRefreshToken,
+    );
+
+    return {
+      success: true,
     };
   }
 }
