@@ -114,17 +114,17 @@ export class PaymentsService {
     const merchantTxRef = `pay_${crypto.randomUUID()}`;
 
     const payment =
-      await this.nomba.initializePayment({
-        amount: dto.amount,
-        reference: merchantTxRef,
-        email: user.email,
+      await this.nomba.createCheckoutOrder({
+        amount: dto.amount*100, //remember to remove
+        orderReference: merchantTxRef,
+        customerEmail: user.email,
       });
 
     await this.prisma.payment.create({
       data: {
         escrowId: escrow.id,
         merchantTxRef,
-        checkoutReference: payment.data.orderReference,
+        checkoutReference: payment.orderReference,
         providerReference: null,
         amount: new Prisma.Decimal(dto.amount),
         currency: 'NGN',
@@ -137,9 +137,9 @@ export class PaymentsService {
       message: 'Checkout initialized',
       data: {
         checkoutUrl: 
-          payment.data.checkoutUrl,
+          payment.checkoutLink,
         orderReference:
-          payment.data.orderReference,
+          payment.orderReference,
       },
     };
   }

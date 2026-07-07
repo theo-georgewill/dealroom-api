@@ -144,11 +144,22 @@ export class DealsService {
           invitations: true,
         },
       });
+      
+      if (!createdDeal || !createdDeal.escrow) {
+        throw new NotFoundException('Failed to load created deal');
+      }
 
       return {
         success: true,
         message: 'Deal created successfully',
-        data: createdDeal,
+        data: {
+          createdDeal,
+          payment: {
+            escrowId: createdDeal.escrow.id,
+            amount: Number(createdDeal.escrow.amount),
+            currency: createdDeal.escrow.currency,
+          },
+        },
       };
     });
   }

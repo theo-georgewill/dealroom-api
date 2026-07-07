@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -11,9 +12,12 @@ import {
   Headers,
   HttpCode,
   Post,
+  Get,
+  Query,
+  Res,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
-
 import { PaymentsService } from './payments.service';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,6 +32,8 @@ import { NombaWebhookDto } from './dto/nomba-webhook.dto';
   version: '1',
 })
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(
     private readonly paymentsService: PaymentsService,
   ) {}
@@ -65,6 +71,16 @@ export class PaymentsController {
     );
   }
 
+  @Get('nomba/callback')
+  callback(
+    @Query('orderReference') orderReference: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/deals/create/success?orderReference=${orderReference}`,
+    );
+  }
+
   @Post('webhook')
   @ApiOperation({
     summary: 'Receive Nomba webhook',
@@ -84,9 +100,15 @@ export class PaymentsController {
   })
   @HttpCode(200)
   async webhook(
+    @Headers() headers: Record<string, string>,
     @Headers('nomba-signature') signature: string,
     @Body() payload: NombaWebhookDto,
   ) {
+    console.log('========== NOMBA WEBHOOK ==========');
+    console.log(headers);
+    console.log(JSON.stringify(payload, null, 2));
+    this.logger.log('Webhook received');
+    this.logger.debug(JSON.stringify(payload, null, 2));
     return this.paymentsService.webhook(
       signature,
       payload,
