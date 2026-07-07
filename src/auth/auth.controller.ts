@@ -1,15 +1,12 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   Res,
   Req,
-  UseGuards,
   UnauthorizedException
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiResponse,
@@ -20,9 +17,6 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from './decorators/current-user.decorator';
-
 
 @ApiTags('Authentication')
 @Controller({
