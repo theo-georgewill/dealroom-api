@@ -17,52 +17,6 @@ export class EscrowService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(
-    dealId: string,
-    userId: string,
-    dto: CreateEscrowDto,
-  ) {
-    const deal = await this.prisma.deal.findUnique({
-      where: {
-        id: dealId,
-      },
-      include: {
-        escrow: true,
-      },
-    });
-
-    if (!deal) {
-      throw new NotFoundException(
-        'Deal not found',
-      );
-    }
-
-    if (deal.creatorId !== userId) {
-      throw new ForbiddenException(
-        'Only the deal creator can create escrow',
-      );
-    }
-
-    if (deal.escrow) {
-      throw new BadRequestException(
-        'Escrow already exists',
-      );
-    }
-
-    const escrow = await this.prisma.escrow.create({
-      data: {
-        dealId,
-        amount: new Prisma.Decimal(dto.amount),
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Escrow created successfully',
-      data: escrow,
-    };
-  }
-
   async findByDeal(
     dealId: string,
     userId: string,

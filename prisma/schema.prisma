@@ -89,6 +89,40 @@ enum TransferStatus {
 enum PaymentProvider {
   NOMBA
 }
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  LAND
+  MIXED_USE
+}
+
+enum DealType {
+  PURCHASE
+  LEASE
+  SALE
+  EXCHANGE
+}
+
+enum FundingSource {
+  BUYER_DEPOSIT
+  SPLIT_DEPOSIT
+  THIRD_PARTY
+}
+
+enum PaymentStructure {
+  SINGLE_PAYMENT
+  MILESTONE_PAYMENTS
+  CUSTOM_STRUCTURE
+}
+
+enum Currency {
+  NGN
+  USD
+  GBP
+  EUR
+}
 model User {
   id                String   @id @default(cuid())
   firstName         String
@@ -122,24 +156,51 @@ model RefreshToken {
   @@index([expiresAt])
 }
 
+model Property {
+  id          String @id @default(cuid())
+  dealId      String @unique
+  deal        Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  name        String
+  type        PropertyType
+  address     String
+  city        String
+  state       String
+  country     String
+  description String?
+  images      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Deal {
-  id                String      @id @default(cuid())
-  title             String
-  description       String?
-  propertyAddress   String
-  propertyType      String
-  dealValue         Decimal     @db.Decimal(15,2)
-  currency          String      @default("NGN")
-  closingDate       DateTime?
-  status            DealStatus  @default(DRAFT)
-  reference         String @unique
-  creatorId         String
-  creator           User        @relation("DealCreator", fields: [creatorId], references: [id])
-  participants      DealParticipant[]
-  escrow            Escrow?
-  invitations       Invitation[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id            String @id @default(cuid())
+  title         String
+  status        DealStatus @default(DRAFT)
+  reference     String @unique
+  creatorId     String
+  creator       User @relation("DealCreator", fields: [creatorId], references: [id])
+  property      Property?
+  terms         DealTerms?
+  escrow        Escrow?
+  participants  DealParticipant[]
+  invitations   Invitation[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DealTerms {
+  id                  String @id @default(cuid())
+  dealId              String @unique
+  deal                Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealType            DealType
+  currency            Currency
+  dealValue           Decimal @db.Decimal(15,2)
+  earnestMoney        Decimal? @db.Decimal(15,2)
+  closingDate         DateTime
+  longStopDate        DateTime?
+  paymentStructure    PaymentStructure
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model DealParticipant {
@@ -159,8 +220,11 @@ model DealParticipant {
 model Escrow {
   id           String @id @default(cuid())
   dealId       String @unique
+  currency     Currency @default(NGN)
   amount       Decimal @db.Decimal(15,2)
   fundedAmount Decimal @default(0) @db.Decimal(15,2)
+  fundingSource FundingSource
+  holdingPeriod Int
   status       EscrowStatus @default(PENDING)
   fundedAt     DateTime?
   releasedAt   DateTime?
@@ -168,8 +232,38 @@ model Escrow {
   payments      Payment[]
   transfers     Transfer[]
   transactions  EscrowTransaction[]
+  releaseConditions EscrowReleaseCondition[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model EscrowReleaseCondition {
+  id          String @id @default(cuid())
+  escrowId    String
+  escrow      Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  description String
+  completed     Boolean @default(false)
+  sortOrder   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EscrowTransaction {
+  id                  String @id @default(cuid())
+  escrowId            String
+  ledgerReference     String @unique
+  providerReference   String? @unique
+  currency            Currency @default(NGN)
+  type                TransactionType
+  status              TransactionStatus
+  amount              Decimal @db.Decimal(15,2)
+  webhookPayload      Json?
+  escrow              Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([escrowId])
+  @@index([status])
 }
 
 model Payment {
@@ -181,7 +275,7 @@ model Payment {
   providerReference  String?
   provider           PaymentProvider @default(NOMBA)
   amount             Decimal @db.Decimal(15,2)
-  currency           String @default("NGN")
+  currency           Currency @default(NGN)
   status             PaymentStatus @default(PENDING)
   paidAt             DateTime?
   createdAt          DateTime @default(now())
@@ -200,7 +294,7 @@ model Transfer {
   accountNumber      String
   accountName        String
   amount             Decimal @db.Decimal(15,2)
-  currency           String @default("NGN")
+  currency           Currency @default(NGN)
   status             TransferStatus @default(PENDING)
   completedAt        DateTime?
   createdAt          DateTime @default(now())
@@ -209,24 +303,6 @@ model Transfer {
   @@index([merchantTxRef])
   @@index([status])
 }
-model EscrowTransaction {
-  id                  String @id @default(cuid())
-  escrowId            String
-  ledgerReference     String @unique
-  providerReference   String? @unique
-  currency            String @default("NGN")
-  type                TransactionType
-  status              TransactionStatus
-  amount              Decimal @db.Decimal(15,2)
-  webhookPayload      Json?
-  escrow              Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@index([escrowId])
-  @@index([status])
-}
-
 model Invitation {
   id           String @id @default(cuid())
   dealId       String
@@ -241,6 +317,9 @@ model Invitation {
   invitedBy    User @relation("InvitationSender", fields: [invitedById], references: [id])
   deal         Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
 }
 
 model WebhookEvent {
@@ -252,6 +331,7 @@ model WebhookEvent {
   processed   Boolean @default(false)
   processedAt DateTime?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([processed])
 }

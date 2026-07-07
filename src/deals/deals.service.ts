@@ -27,16 +27,58 @@ export class DealsService {
       const deal = await tx.deal.create({
         data: {
           title: dto.title,
-          description: dto.description,
-          propertyAddress: dto.propertyAddress,
-          propertyType: dto.propertyType,
-          dealValue: new Prisma.Decimal(dto.dealValue),
-          currency: dto.currency ?? 'NGN',
-          closingDate: dto.closingDate
-            ? new Date(dto.closingDate)
-            : null,
           reference,
           creatorId: userId,
+
+          property: {
+            create: {
+              name: dto.property.name,
+              type: dto.property.type,
+              address: dto.property.address,
+              city: dto.property.city,
+              state: dto.property.state,
+              country: dto.property.country,
+              description: dto.property.description,
+              images: dto.property.images
+                ? (dto.property.images as unknown as Prisma.InputJsonValue)
+                : Prisma.JsonNull,
+            },
+          },
+
+          terms: {
+            create: {
+              dealType: dto.terms.dealType,
+              currency: dto.terms.currency,
+              dealValue: new Prisma.Decimal(dto.terms.dealValue),
+              earnestMoney:
+                dto.terms.earnestMoney !== undefined
+                  ? new Prisma.Decimal(dto.terms.earnestMoney)
+                  : null,
+              closingDate: new Date(dto.terms.closingDate),
+              longStopDate: dto.terms.longStopDate
+                ? new Date(dto.terms.longStopDate)
+                : null,
+              paymentStructure: dto.terms.paymentStructure,
+            },
+          },
+
+          escrow: {
+            create: {
+              amount: new Prisma.Decimal(dto.escrow.amount),
+              fundingSource: dto.escrow.fundingSource,
+              holdingPeriod: dto.escrow.holdingPeriod,
+              currency: dto.terms.currency,
+
+              releaseConditions: {
+                create: dto.escrow.releaseConditions.map(
+                  (description, index) => ({
+                    description,
+                    sortOrder: index + 1,
+                  }),
+                ),
+              },
+            },
+          },
         },
       });
 
@@ -48,6 +90,19 @@ export class DealsService {
           status: 'ACCEPTED',
           joinedAt: new Date(),
         },
+      });
+
+      await tx.invitation.createMany({
+        data: dto.stakeholders.map((stakeholder) => ({
+          dealId: deal.id,
+          email: stakeholder.email,
+          role: stakeholder.role,
+          invitedById: userId,
+          token: randomUUID(),
+          expiresAt: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ),
+        })),
       });
 
       const createdDeal = await tx.deal.findUnique({
@@ -64,6 +119,15 @@ export class DealsService {
               avatar: true,
             },
           },
+          property: true,
+          terms: true,
+          escrow: {
+            include: {
+              releaseConditions: true,
+              payments: true,
+              transactions: true,
+            },
+          },
           participants: {
             include: {
               user: {
@@ -77,6 +141,7 @@ export class DealsService {
               },
             },
           },
+          invitations: true,
         },
       });
 
@@ -107,8 +172,28 @@ export class DealsService {
             avatar: true,
           },
         },
-        participants: true,
-        escrow: true,
+        property: true,
+        terms: true,
+        escrow: {
+          include: {
+            releaseConditions: true,
+            payments: true,
+            transactions: true,
+          },
+        },
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -145,6 +230,11 @@ export class DealsService {
             avatar: true,
           },
         },
+
+        property: true,
+
+        terms: true,
+
         participants: {
           include: {
             user: {
@@ -158,11 +248,15 @@ export class DealsService {
             },
           },
         },
+
         escrow: {
           include: {
+            releaseConditions: true,
+            payments: true,
             transactions: true,
           },
         },
+
         invitations: {
           select: {
             id: true,
@@ -173,7 +267,7 @@ export class DealsService {
             createdAt: true,
           },
         },
-      },
+      }
     });
 
     if (!deal) {
@@ -217,31 +311,139 @@ export class DealsService {
       );
     }
 
-    const updatedDeal = await this.prisma.deal.update({
-      where: {
-        id,
-      },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        propertyAddress: dto.propertyAddress,
-        propertyType: dto.propertyType,
-        currency: dto.currency,
-        closingDate: dto.closingDate
-          ? new Date(dto.closingDate)
-          : undefined,
-        dealValue:
-          dto.dealValue !== undefined
-            ? new Prisma.Decimal(dto.dealValue)
-            : undefined,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.deal.update({
+        where: { id },
+        data: {
+          title: dto.title,
+        },
+      });
 
-    return {
-      success: true,
-      message: 'Deal updated successfully',
-      data: updatedDeal,
-    };
+      if (dto.property) {
+        await tx.property.update({
+          where: {
+            dealId: id,
+          },
+          data: {
+            name: dto.property.name,
+            type: dto.property.type,
+            address: dto.property.address,
+            city: dto.property.city,
+            state: dto.property.state,
+            country: dto.property.country,
+            description: dto.property.description,
+            images: dto.property.images
+              ? (dto.property.images as unknown as Prisma.InputJsonValue)
+              : Prisma.JsonNull,
+          },
+        });
+      }
+
+      if (dto.terms) {
+        await tx.dealTerms.update({
+          where: {
+            dealId: id,
+          },
+          data: {
+            dealType: dto.terms.dealType,
+            currency: dto.terms.currency,
+            dealValue:
+              dto.terms.dealValue !== undefined
+                ? new Prisma.Decimal(dto.terms.dealValue)
+                : undefined,
+            earnestMoney:
+              dto.terms.earnestMoney !== undefined
+                ? new Prisma.Decimal(dto.terms.earnestMoney)
+                : undefined,
+            closingDate: dto.terms.closingDate
+              ? new Date(dto.terms.closingDate)
+              : undefined,
+            longStopDate: dto.terms.longStopDate
+              ? new Date(dto.terms.longStopDate)
+              : undefined,
+            paymentStructure: dto.terms.paymentStructure,
+          },
+        });
+      }
+
+      if (dto.escrow) {
+        await tx.escrow.update({
+          where: {
+            dealId: id,
+          },
+          data: {
+            amount:
+              dto.escrow.amount !== undefined
+                ? new Prisma.Decimal(dto.escrow.amount)
+                : undefined,
+            fundingSource: dto.escrow.fundingSource,
+            holdingPeriod: dto.escrow.holdingPeriod,
+          },
+        });
+
+        if (dto.escrow.releaseConditions) {
+          const escrow = await tx.escrow.findUnique({
+            where: {
+              dealId: id,
+            },
+          });
+
+          await tx.escrowReleaseCondition.deleteMany({
+            where: {
+              escrowId: escrow!.id,
+            },
+          });
+
+          await tx.escrowReleaseCondition.createMany({
+            data: dto.escrow.releaseConditions.map(
+              (description, index) => ({
+                escrowId: escrow!.id,
+                description,
+                sortOrder: index + 1,
+              }),
+            ),
+          });
+        }
+      }
+
+      const updatedDeal = await tx.deal.findUnique({
+        where: {
+          id,
+        },
+        include: {
+          creator: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true,
+            },
+          },
+          property: true,
+          terms: true,
+          escrow: {
+            include: {
+              releaseConditions: true,
+              payments: true,
+              transactions: true,
+            },
+          },
+          participants: {
+            include: {
+              user: true,
+            },
+          },
+          invitations: true,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Deal updated successfully',
+        data: updatedDeal,
+      };
+    });
   }
 
   async remove(

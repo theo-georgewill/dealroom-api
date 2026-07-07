@@ -32,47 +32,6 @@ export class EscrowController {
     private readonly escrowService: EscrowService,
   ) {}
 
-  @Post()
-  @ApiOperation({
-    summary: 'Create escrow',
-    description:
-      'Creates an escrow account for a deal. Only the deal creator can perform this action.',
-  })
-  @ApiParam({
-    name: 'dealId',
-    description: 'Unique identifier of the deal.',
-    example: '8d9a4d58-7d2b-4e5d-a24b-5fd7b6b92c5c',
-  })
-  @ApiBody({
-    type: CreateEscrowDto,
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Escrow created successfully.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Escrow already exists.',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Only the deal creator can create escrow.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Deal not found.',
-  })
-  create(
-    @Param('dealId') dealId: string,
-    @CurrentUser() user: any,
-    @Body() dto: CreateEscrowDto,
-  ) {
-    return this.escrowService.create(
-      dealId,
-      user.id,
-      dto,
-    );
-  }
 
   @Get()
   @ApiOperation({

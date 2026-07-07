@@ -115,12 +115,49 @@ export class InvitationsService {
             select: {
               id: true,
               title: true,
-              propertyAddress: true,
-              propertyType: true,
-              dealValue: true,
-              currency: true,
-              closingDate: true,
               status: true,
+              property: {
+                select: {
+                  name: true,
+                  type: true,
+                  address: true,
+                  city: true,
+                  state: true,
+                  country: true,
+                  description: true,
+                  images: true,
+                },
+              },
+              terms: {
+                select: {
+                  dealType: true,
+                  currency: true,
+                  dealValue: true,
+                  earnestMoney: true,
+                  closingDate: true,
+                  longStopDate: true,
+                  paymentStructure: true,
+                },
+              },
+              escrow: {
+                select: {
+                  amount: true,
+                  fundedAmount: true,
+                  fundingSource: true,
+                  holdingPeriod: true,
+                  status: true,
+                  releaseConditions: {
+                    orderBy: {
+                      sortOrder: 'asc',
+                    },
+                    select: {
+                      description: true,
+                      completed: true,
+                      sortOrder: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
