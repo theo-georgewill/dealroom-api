@@ -21,13 +21,14 @@ import { DealsService } from './deals.service';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { InvitationsService } from '../invitations/invitations.service';
 import { CreateInvitationDto } from '../invitations/dto/create-invitation.dto';
-import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 
 @ApiTags('Deals')
-@UseGuards(AuthenticatedGuard)
+@ApiBearerAuth('JWT')
+@UseGuards(JwtAuthGuard)
 @Controller({
   path: 'deals',
   version: '1',
