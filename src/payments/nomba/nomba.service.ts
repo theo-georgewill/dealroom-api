@@ -129,5 +129,153 @@ export class NombaService {
     }
   }
 
+  async lookupBankAccount(
+    bankCode: string,
+    accountNumber: string,
+  ) {
+    try {
+      const token = await this.getAccessToken();
+
+      const { data: response } = await firstValueFrom(
+        this.http.post(
+          `${process.env.NOMBA_BASE_URL}/v1/transfers/bank/lookup`,
+          {
+            bankCode,
+            accountNumber,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accountId: process.env.NOMBA_ACCOUNT_ID,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      if (response.code !== '00') {
+        throw new InternalServerErrorException(
+          response.description ??
+            'Unable to lookup bank account',
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.logger.error(
+        'Bank account lookup failed',
+        error.response?.data ?? error.message,
+      );
+
+      throw new InternalServerErrorException(
+        error.response?.data?.description ??
+        error.response?.data?.message ??
+        'Unable to lookup bank account',
+      );
+    }
+  }
+
+  async createTransfer(data: {
+    amount: number;
+    bankCode: string;
+    accountNumber: string;
+    accountName: string;
+    senderName: string;
+    narration: string;
+    merchantTxRef: string;
+  }) {
+    try {
+      const token = await this.getAccessToken();
+
+      const { data: response } = await firstValueFrom(
+        this.http.post(
+          `${process.env.NOMBA_BASE_URL}/v1/transfers/bank`,
+          {
+            amount: data.amount,
+            bankCode: data.bankCode,
+            accountNumber: data.accountNumber,
+            accountName: data.accountName,
+            senderName: data.senderName,
+            narration: data.narration,
+            merchantTxRef: data.merchantTxRef,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accountId: process.env.NOMBA_ACCOUNT_ID,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      if (response.code !== '00') {
+        throw new InternalServerErrorException(
+          response.description ??
+            'Unable to create transfer',
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+        console.log('================ TRANSFER ERROR ================');
+        console.log('Status:', error.response?.status);
+
+        console.log('Response:');
+        console.dir(error.response?.data, {
+          depth: null,
+          colors: true,
+        });
+
+        console.log('Message:', error.message);
+
+        throw new InternalServerErrorException(
+          error.response?.data?.description ??
+          error.response?.data?.message ??
+          JSON.stringify(error.response?.data) ??
+          'Unable to initiate transfer',
+        );
+      }
+  }
   
+  async getTransfer(
+    merchantTxRef: string,
+  ) {
+    try {
+      const token = await this.getAccessToken();
+
+      const { data: response } = await firstValueFrom(
+        this.http.get(
+          `${process.env.NOMBA_BASE_URL}/v1/transfers/${merchantTxRef}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accountId: process.env.NOMBA_ACCOUNT_ID,
+            },
+          },
+        ),
+      );
+
+      if (response.code !== '00') {
+        throw new InternalServerErrorException(
+          response.description ??
+            'Unable to fetch transfer',
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.logger.error(
+        'Failed to fetch transfer',
+        error.response?.data ?? error.message,
+      );
+
+      throw new InternalServerErrorException(
+        error.response?.data?.description ??
+        error.response?.data?.message ??
+        'Unable to fetch transfer',
+      );
+    }
+  }
+
 }

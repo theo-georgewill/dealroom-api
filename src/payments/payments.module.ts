@@ -17,5 +17,9 @@ import { PrismaModule } from '../prisma/prisma.module';
     PaymentsService,
     NombaService,
   ],
+  exports: [
+    PaymentsService,
+    NombaService,
+  ],
 })
 export class PaymentsModule {}

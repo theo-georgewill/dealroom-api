@@ -2,18 +2,16 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsNumber,
+  IsString,
+  IsUUID,
   Min,
 } from 'class-validator';
 
 export class ReleaseEscrowDto {
   @ApiProperty({
-    example: 25000000,
-    description:
-      'The amount to release from escrow to the recipient.',
-    minimum: 1,
+    example: 'cmev4b9jq0000t6p3n4d7q8r2',
+    description: 'Recipient bank account ID.',
   })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  amount!: number;
+  @IsString()
+  bankAccountId!: string;
 }

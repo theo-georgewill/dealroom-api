@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -24,19 +25,39 @@ export class PaymentsService {
 
   private verifyWebhookSignature(
     signature: string,
+    timestamp: string,
     payload: NombaWebhookDto,
   ): void {
-    const expected = crypto
-      .createHmac(
-        'sha256',
-        this.configService.getOrThrow<string>(
-          'NOMBA_WEBHOOK_SECRET',
-        ),
-      )
-      .update(JSON.stringify(payload))
-      .digest('hex');
+    const secret = this.configService.getOrThrow<string>(
+      'NOMBA_WEBHOOK_SECRET',
+    );
 
-    if (signature !== expected) {
+    const canonical = [
+      payload.event_type,
+      payload.requestId,
+      payload.data.merchant.userId,
+      payload.data.merchant.walletId,
+      payload.data.transaction.transactionId,
+      payload.data.transaction.type,
+      payload.data.transaction.time,
+      payload.data.transaction.responseCode === 'null'
+        ? ''
+        : payload.data.transaction.responseCode,
+      timestamp,
+    ].join(':');
+
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(canonical)
+      .digest('base64');
+
+    const actual = Buffer.from(signature, 'utf8');
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+
+    if (
+      actual.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(actual, expectedBuffer)
+    ) {
       throw new UnauthorizedException(
         'Invalid webhook signature',
       );
@@ -115,7 +136,7 @@ export class PaymentsService {
 
     const payment =
       await this.nomba.createCheckoutOrder({
-        amount: dto.amount*100, //remember to remove
+        amount: dto.amount,
         orderReference: merchantTxRef,
         customerEmail: user.email,
       });
@@ -146,13 +167,22 @@ export class PaymentsService {
 
   async webhook(
     signature: string,
+    timestamp: string,
     payload: NombaWebhookDto,
   ) {
     this.verifyWebhookSignature(
-      signature, 
-      payload
+      signature,
+      timestamp,
+      payload,
     );
 
+    if (payload.event_type !== 'payment_success') {
+      return {
+        success: true,
+        message: 'Event ignored',
+      };
+    }
+    
     const existing =
       await this.prisma.webhookEvent.findUnique({
         where: {
@@ -184,16 +214,15 @@ export class PaymentsService {
       );
     }
 
-    if (payload.event_type !== 'payment_success') {
+    if (paymentRecord.status === 'SUCCESS') {
       return {
         success: true,
-        message: 'Event ignored',
+        message: 'Payment already processed',
       };
     }
 
-    const rawPayload = JSON.parse(
-      JSON.stringify(instanceToPlain(payload)),
-    ) as Prisma.InputJsonValue;
+    const rawPayload =
+      instanceToPlain(payload) as Prisma.InputJsonValue;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.webhookEvent.create({
@@ -212,6 +241,8 @@ export class PaymentsService {
         data: {
           status: 'SUCCESS',
           paidAt: new Date(),
+          providerReference:
+            payload.data.transaction.transactionId,
         },
       });
 
@@ -219,7 +250,7 @@ export class PaymentsService {
         data: {
           escrowId: paymentRecord.escrowId,
           ledgerReference: paymentRecord.merchantTxRef,
-          providerReference: paymentRecord.providerReference,
+          providerReference: payload.data.transaction.transactionId,
           amount: new Prisma.Decimal(
             payload.data.transaction.transactionAmount,
           ),

@@ -100,17 +100,18 @@ export class PaymentsController {
   })
   @HttpCode(200)
   async webhook(
-    @Headers() headers: Record<string, string>,
     @Headers('nomba-signature') signature: string,
+    @Headers('nomba-timestamp') timestamp: string,
     @Body() payload: NombaWebhookDto,
   ) {
-    console.log('========== NOMBA WEBHOOK ==========');
-    console.log(headers);
-    console.log(JSON.stringify(payload, null, 2));
+    this.logger.log(`Signature: ${signature}`);
+    this.logger.log(`Timestamp: ${timestamp}`);
     this.logger.log('Webhook received');
+
     this.logger.debug(JSON.stringify(payload, null, 2));
     return this.paymentsService.webhook(
       signature,
+      timestamp,
       payload,
     );
   }

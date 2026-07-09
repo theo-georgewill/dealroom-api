@@ -140,6 +140,7 @@ model User {
   acceptedInvitations Invitation[] @relation("InvitationReceiver")
   sentInvitations Invitation[] @relation("InvitationSender")
   refreshTokens     RefreshToken[]
+  bankAccounts      BankAccount[]
 }
 
 model RefreshToken {
@@ -302,6 +303,20 @@ model Transfer {
   
   @@index([merchantTxRef])
   @@index([status])
+}
+
+model BankAccount {
+  id            String @id @default(cuid())
+  userId        String
+  user          User @relation(fields: [userId], references: [id])
+  bankCode      String
+  accountNumber String
+  accountName   String
+  verifiedAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, accountNumber])
 }
 model Invitation {
   id           String @id @default(cuid())

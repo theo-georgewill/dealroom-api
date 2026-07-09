@@ -17,8 +17,8 @@ import {
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CreateEscrowDto } from './dto/create-escrow.dto';
 import { EscrowService } from './escrow.service';
+import { ReleaseEscrowDto } from './dto/release-escrow.dto';
 
 @ApiTags('Escrow')
 @ApiBearerAuth('JWT')
@@ -63,6 +63,44 @@ export class EscrowController {
     return this.escrowService.findByDeal(
       dealId,
       user.id,
+    );
+  }
+
+  @Post('release')
+  @ApiOperation({
+    summary: 'Release escrow funds',
+    description:
+      'Releases escrow funds to the seller. Only the buyer can perform this action once the escrow is fully funded.',
+  })
+  @ApiParam({
+    name: 'dealId',
+    description: 'Unique identifier of the deal.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Escrow released successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Escrow cannot be released.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the buyer can release the escrow.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Escrow not found.',
+  })
+  release(
+    @Param('dealId') dealId: string,
+    @CurrentUser() user: any,
+    @Body() dto: ReleaseEscrowDto,
+  ) {
+    return this.escrowService.release(
+      dealId,
+      user.id,
+      dto,
     );
   }
 }
