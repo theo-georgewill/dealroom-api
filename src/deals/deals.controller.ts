@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -16,7 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-
+import { ListDealsDto } from './dto/list-deals.dto';
 import { DealsService } from './deals.service';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
@@ -84,9 +85,11 @@ export class DealsController {
   })
   findAll(
     @CurrentUser() user: any,
+    @Query() query: ListDealsDto,
   ) {
     return this.dealsService.findAll(
       user.id,
+      query,
     );
   }
 

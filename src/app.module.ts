@@ -9,6 +9,7 @@ import { EscrowModule } from './escrow/escrow.module';
 import { PaymentsModule } from './payments/payments.module';
 import { HealthController } from './health/health.controller';
 import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -21,7 +22,9 @@ import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
     DealsModule, 
     InvitationsModule, 
     EscrowModule, 
-    PaymentsModule, BankAccountsModule,
+    PaymentsModule, 
+    BankAccountsModule, 
+    StorageModule,
   ],
   controllers: [HealthController],
 })

@@ -123,44 +123,55 @@ enum Currency {
   GBP
   EUR
 }
+
+enum FileCategory {
+  PROPERTY_IMAGE
+  CONTRACT
+  RECEIPT
+  DUE_DILIGENCE
+  GOVERNMENT_DOCUMENT
+  OTHER
+}
+
 model User {
-  id                String   @id @default(cuid())
-  firstName         String
-  lastName          String
-  email             String   @unique
-  phone             String?  @unique
-  password          String
-  avatar            String?
-  status            UserStatus @default(ACTIVE)
-  isEmailVerified   Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  createdDeals      Deal[]              @relation("DealCreator")
-  participants      DealParticipant[]
-  acceptedInvitations Invitation[] @relation("InvitationReceiver")
-  sentInvitations Invitation[] @relation("InvitationSender")
-  refreshTokens     RefreshToken[]
-  bankAccounts      BankAccount[]
+  id                  String            @id @default(cuid())
+  firstName           String
+  lastName            String
+  email               String            @unique
+  phone               String?           @unique
+  password            String
+  avatar              String?
+  status              UserStatus        @default(ACTIVE)
+  isEmailVerified     Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdDeals        Deal[]            @relation("DealCreator")
+  participants        DealParticipant[]
+  acceptedInvitations Invitation[]      @relation("InvitationReceiver")
+  sentInvitations     Invitation[]      @relation("InvitationSender")
+  refreshTokens       RefreshToken[]
+  bankAccounts        BankAccount[]
+  uploadedFiles       File[]
 }
 
 model RefreshToken {
-  id          String   @id @default(cuid())
-  tokenHash   String
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId       String
-  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model Property {
-  id          String @id @default(cuid())
-  dealId      String @unique
-  deal        Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  dealId      String       @unique
+  deal        Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
   name        String
   type        PropertyType
   address     String
@@ -169,184 +180,210 @@ model Property {
   country     String
   description String?
   images      Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Deal {
-  id            String @id @default(cuid())
-  title         String
-  status        DealStatus @default(DRAFT)
-  reference     String @unique
-  creatorId     String
-  creator       User @relation("DealCreator", fields: [creatorId], references: [id])
-  property      Property?
-  terms         DealTerms?
-  escrow        Escrow?
-  participants  DealParticipant[]
-  invitations   Invitation[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String            @id @default(cuid())
+  title        String
+  status       DealStatus        @default(DRAFT)
+  reference    String            @unique
+  creatorId    String
+  creator      User              @relation("DealCreator", fields: [creatorId], references: [id])
+  property     Property?
+  terms        DealTerms?
+  escrow       Escrow?
+  participants DealParticipant[]
+  invitations  Invitation[]
+  files        File[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DealTerms {
-  id                  String @id @default(cuid())
-  dealId              String @unique
-  deal                Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  dealType            DealType
-  currency            Currency
-  dealValue           Decimal @db.Decimal(15,2)
-  earnestMoney        Decimal? @db.Decimal(15,2)
-  closingDate         DateTime
-  longStopDate        DateTime?
-  paymentStructure    PaymentStructure
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id               String           @id @default(cuid())
+  dealId           String           @unique
+  deal             Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealType         DealType
+  currency         Currency
+  dealValue        Decimal          @db.Decimal(15, 2)
+  earnestMoney     Decimal?         @db.Decimal(15, 2)
+  closingDate      DateTime
+  longStopDate     DateTime?
+  paymentStructure PaymentStructure
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model DealParticipant {
-  id          String @id @default(cuid())
-  dealId      String
-  userId      String
-  role        ParticipantRole
-  status      ParticipantStatus @default(PENDING)
-  joinedAt    DateTime?
-  deal        Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  user        User @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String            @id @default(cuid())
+  dealId    String
+  userId    String
+  role      ParticipantRole
+  status    ParticipantStatus @default(PENDING)
+  joinedAt  DateTime?
+  deal      Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id])
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
   @@unique([dealId, userId])
 }
 
 model Escrow {
-  id           String @id @default(cuid())
-  dealId       String @unique
-  currency     Currency @default(NGN)
-  amount       Decimal @db.Decimal(15,2)
-  fundedAmount Decimal @default(0) @db.Decimal(15,2)
-  fundingSource FundingSource
-  holdingPeriod Int
-  status       EscrowStatus @default(PENDING)
-  fundedAt     DateTime?
-  releasedAt   DateTime?
-  deal         Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  payments      Payment[]
-  transfers     Transfer[]
-  transactions  EscrowTransaction[]
+  id                String                   @id @default(cuid())
+  dealId            String                   @unique
+  currency          Currency                 @default(NGN)
+  amount            Decimal                  @db.Decimal(15, 2)
+  fundedAmount      Decimal                  @default(0) @db.Decimal(15, 2)
+  fundingSource     FundingSource
+  holdingPeriod     Int
+  status            EscrowStatus             @default(PENDING)
+  fundedAt          DateTime?
+  releasedAt        DateTime?
+  deal              Deal                     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  payments          Payment[]
+  transfers         Transfer[]
+  transactions      EscrowTransaction[]
   releaseConditions EscrowReleaseCondition[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 }
 
 model EscrowReleaseCondition {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   escrowId    String
-  escrow      Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  escrow      Escrow   @relation(fields: [escrowId], references: [id], onDelete: Cascade)
   description String
-  completed     Boolean @default(false)
+  completed   Boolean  @default(false)
   sortOrder   Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model EscrowTransaction {
-  id                  String @id @default(cuid())
-  escrowId            String
-  ledgerReference     String @unique
-  providerReference   String? @unique
-  currency            Currency @default(NGN)
-  type                TransactionType
-  status              TransactionStatus
-  amount              Decimal @db.Decimal(15,2)
-  webhookPayload      Json?
-  escrow              Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String            @id @default(cuid())
+  escrowId          String
+  ledgerReference   String            @unique
+  providerReference String?           @unique
+  currency          Currency          @default(NGN)
+  type              TransactionType
+  status            TransactionStatus
+  amount            Decimal           @db.Decimal(15, 2)
+  webhookPayload    Json?
+  escrow            Escrow            @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([escrowId])
   @@index([status])
 }
 
 model Payment {
-  id                 String @id @default(cuid())
-  escrowId           String
-  escrow             Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  merchantTxRef      String @unique
-  checkoutReference  String?
-  providerReference  String?
-  provider           PaymentProvider @default(NOMBA)
-  amount             Decimal @db.Decimal(15,2)
-  currency           Currency @default(NGN)
-  status             PaymentStatus @default(PENDING)
-  paidAt             DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String          @id @default(cuid())
+  escrowId          String
+  escrow            Escrow          @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  merchantTxRef     String          @unique
+  checkoutReference String?
+  providerReference String?
+  provider          PaymentProvider @default(NOMBA)
+  amount            Decimal         @db.Decimal(15, 2)
+  currency          Currency        @default(NGN)
+  status            PaymentStatus   @default(PENDING)
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@index([merchantTxRef])
   @@index([status])
 }
+
 model Transfer {
-  id                 String @id @default(cuid())
-  escrowId           String
-  escrow             Escrow @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  merchantTxRef      String @unique
-  providerReference  String?
-  bankCode           String
-  accountNumber      String
-  accountName        String
-  amount             Decimal @db.Decimal(15,2)
-  currency           Currency @default(NGN)
-  status             TransferStatus @default(PENDING)
-  completedAt        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
+  id                String         @id @default(cuid())
+  escrowId          String
+  escrow            Escrow         @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  merchantTxRef     String         @unique
+  providerReference String?
+  bankCode          String
+  accountNumber     String
+  accountName       String
+  amount            Decimal        @db.Decimal(15, 2)
+  currency          Currency       @default(NGN)
+  status            TransferStatus @default(PENDING)
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
   @@index([merchantTxRef])
   @@index([status])
 }
 
 model BankAccount {
-  id            String @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
   bankCode      String
   accountNumber String
   accountName   String
   verifiedAt    DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([userId, accountNumber])
 }
+
 model Invitation {
-  id           String @id @default(cuid())
+  id           String           @id @default(cuid())
   dealId       String
   email        String
   role         ParticipantRole
   status       InvitationStatus @default(PENDING)
-  token        String @unique
+  token        String           @unique
   expiresAt    DateTime
   acceptedById String?
-  acceptedBy   User? @relation("InvitationReceiver", fields: [acceptedById], references: [id])
+  acceptedBy   User?            @relation("InvitationReceiver", fields: [acceptedById], references: [id])
   invitedById  String
-  invitedBy    User @relation("InvitationSender", fields: [invitedById], references: [id])
-  deal         Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  invitedBy    User             @relation("InvitationSender", fields: [invitedById], references: [id])
+  deal         Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([email])
 }
 
 model WebhookEvent {
-  id          String @id @default(cuid())
-  requestId   String @unique
+  id          String    @id @default(cuid())
+  requestId   String    @unique
   eventType   String
   signature   String
   payload     Json
-  processed   Boolean @default(false)
+  processed   Boolean   @default(false)
   processedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([processed])
+}
+
+model File {
+  id           String       @id @default(cuid())
+  originalName String
+  filename     String
+  mimeType     String
+  size         Int
+  bucket       String
+  key          String       @unique
+  category     FileCategory @default(OTHER)
+  uploadedById String
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+  dealId       String?
+  deal         Deal?        @relation(fields: [dealId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([dealId])
+  @@index([uploadedById])
+  @@index([category])
 }

@@ -4,18 +4,93 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { Prisma } from '@prisma/client';
+import { Prisma, DealStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
+import { ListDealsDto } from './dto/list-deals.dto';
+
+const dealInclude = {
+  creator: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+    },
+  },
+
+  property: true,
+
+  terms: true,
+
+  escrow: {
+    include: {
+      releaseConditions: true,
+      payments: true,
+      transactions: true,
+    },
+  },
+
+  participants: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          avatar: true,
+        },
+      },
+    },
+  },
+
+  invitations: true,
+} satisfies Prisma.DealInclude;
 
 @Injectable()
 export class DealsService {
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  private calculateProgress(status: DealStatus): number {
+    switch (status) {
+      case 'DRAFT':
+        return 10;
+
+      case 'PENDING_PARTICIPANTS':
+        return 25;
+
+      case 'PENDING_FUNDING':
+        return 40;
+
+      case 'FUNDED':
+        return 55;
+
+      case 'DUE_DILIGENCE':
+        return 70;
+
+      case 'RELEASE_REQUESTED':
+        return 90;
+
+      case 'COMPLETED':
+        return 100;
+
+      case 'DISPUTED':
+        return 65;
+
+      case 'CANCELLED':
+        return 0;
+
+      default:
+        return 0;
+    }
+  }
 
   async create(
     userId: string,
@@ -109,40 +184,7 @@ export class DealsService {
         where: {
           id: deal.id,
         },
-        include: {
-          creator: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              avatar: true,
-            },
-          },
-          property: true,
-          terms: true,
-          escrow: {
-            include: {
-              releaseConditions: true,
-              payments: true,
-              transactions: true,
-            },
-          },
-          participants: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  avatar: true,
-                },
-              },
-            },
-          },
-          invitations: true,
-        },
+        include: dealInclude,
       });
       
       if (!createdDeal || !createdDeal.escrow) {
@@ -153,7 +195,10 @@ export class DealsService {
         success: true,
         message: 'Deal created successfully',
         data: {
-          createdDeal,
+          createdDeal: {
+            ...createdDeal,
+            progress: this.calculateProgress(createdDeal.status),
+          },
           payment: {
             escrowId: createdDeal.escrow.id,
             amount: Number(createdDeal.escrow.amount),
@@ -164,57 +209,111 @@ export class DealsService {
     });
   }
 
-  async findAll(userId: string) {
-    const deals = await this.prisma.deal.findMany({
-      where: {
-        participants: {
+  async findAll(
+    userId: string,
+    query: ListDealsDto,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+    
+    const where: Prisma.DealWhereInput = {};
+
+    switch (query.scope) {
+      case 'owned':
+        where.creatorId = userId;
+        break;
+
+      case 'shared':
+        where.creatorId = {
+          not: userId,
+        };
+
+        where.participants = {
           some: {
             userId,
           },
-        },
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatar: true,
+        };
+        break;
+
+      case 'all':
+      default:
+        where.participants = {
+          some: {
+            userId,
+          },
+        };
+        break;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.search) {
+      where.OR = [
+        {
+          title: {
+            contains: query.search,
+            mode: 'insensitive',
           },
         },
-        property: true,
-        terms: true,
-        escrow: {
-          include: {
-            releaseConditions: true,
-            payments: true,
-            transactions: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                avatar: true,
+        {
+          property: {
+            is: {
+              name: {
+                contains: query.search,
+                mode: 'insensitive',
               },
             },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        {
+          property: {
+            is: {
+              address: {
+                contains: query.search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    const [deals, total] = await this.prisma.$transaction([
+      this.prisma.deal.findMany({
+        where,
+        include: dealInclude,
+        orderBy: {
+          [query.sortBy]: query.sortOrder,
+        },
+        skip,
+        take: limit,
+      }),
+
+      this.prisma.deal.count({
+        where,
+      }),
+    ]);
+
+    const data = deals.map((deal) => ({
+      ...deal,
+      progress: this.calculateProgress(deal.status),
+    }));
 
     return {
       success: true,
       message: 'Deals retrieved successfully',
-      data: deals,
+      data: data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
     };
   }
 
@@ -231,64 +330,22 @@ export class DealsService {
           },
         },
       },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatar: true,
-          },
-        },
-
-        property: true,
-
-        terms: true,
-
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-
-        escrow: {
-          include: {
-            releaseConditions: true,
-            payments: true,
-            transactions: true,
-          },
-        },
-
-        invitations: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            status: true,
-            expiresAt: true,
-            createdAt: true,
-          },
-        },
-      }
+      include: dealInclude,
     });
 
     if (!deal) {
       throw new NotFoundException('Deal not found');
     }
 
+    const data = {
+      ...deal,
+      progress: this.calculateProgress(deal.status),
+    };
+
     return {
       success: true,
       message: 'Deal retrieved successfully',
-      data: deal,
+      data,
     };
   }
 
@@ -421,38 +478,23 @@ export class DealsService {
         where: {
           id,
         },
-        include: {
-          creator: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              avatar: true,
-            },
-          },
-          property: true,
-          terms: true,
-          escrow: {
-            include: {
-              releaseConditions: true,
-              payments: true,
-              transactions: true,
-            },
-          },
-          participants: {
-            include: {
-              user: true,
-            },
-          },
-          invitations: true,
-        },
+        include: dealInclude,
       });
+
+      if (!updatedDeal) {
+        return {
+          success: false,
+          message: 'Failed to load updated deal',
+        };
+      }
 
       return {
         success: true,
         message: 'Deal updated successfully',
-        data: updatedDeal,
+        data: {
+          ...updatedDeal,
+          progress: this.calculateProgress(updatedDeal.status),
+        },
       };
     });
   }
