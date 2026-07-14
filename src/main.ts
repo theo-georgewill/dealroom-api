@@ -8,7 +8,9 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
+  console.log("1. Before NestFactory.create");
   const app = await NestFactory.create(AppModule);
+  console.log("2. After NestFactory.create");
   app.use(cookieParser());
 
   app.enableVersioning({
@@ -34,6 +36,7 @@ async function bootstrap() {
     }),
   );
 
+  console.log("3. Before Swagger");
   // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Deal Room API')
@@ -54,14 +57,19 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
 
+  console.log("4. After Swagger");
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
     },
   });
 
+  console.log("5. Before listen");
   await app.listen(process.env.PORT ?? 3000);
 
+
+  console.log("6. Server listening on", process.env.PORT); 
+  
   console.log(
     `🚀 Server running on http://localhost:${process.env.PORT ?? 3000}`,
   );
