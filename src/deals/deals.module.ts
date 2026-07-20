@@ -7,18 +7,9 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    InvitationsModule,
-  ],
-  controllers: [
-    DealsController,
-  ],
-  providers: [
-    DealsService,
-  ],
-  exports: [
-    DealsService,
-  ],
+  imports: [PrismaModule, InvitationsModule],
+  controllers: [DealsController],
+  providers: [DealsService],
+  exports: [DealsService],
 })
 export class DealsModule {}

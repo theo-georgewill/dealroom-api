@@ -34,9 +34,7 @@ import { NombaWebhookDto } from './dto/nomba-webhook.dto';
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
-  constructor(
-    private readonly paymentsService: PaymentsService,
-  ) {}
+  constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('initialize')
   @UseGuards(JwtAuthGuard)
@@ -61,14 +59,8 @@ export class PaymentsController {
     status: 401,
     description: 'Unauthorized.',
   })
-  initialize(
-    @CurrentUser() user: any,
-    @Body() dto: InitializePaymentDto,
-  ) {
-    return this.paymentsService.initialize(
-      user.id,
-      dto,
-    );
+  initialize(@CurrentUser() user: any, @Body() dto: InitializePaymentDto) {
+    return this.paymentsService.initialize(user.id, dto);
   }
 
   @Get('nomba/callback')
@@ -109,10 +101,6 @@ export class PaymentsController {
     this.logger.log('Webhook received');
 
     this.logger.debug(JSON.stringify(payload, null, 2));
-    return this.paymentsService.webhook(
-      signature,
-      timestamp,
-      payload,
-    );
+    return this.paymentsService.webhook(signature, timestamp, payload);
   }
 }

@@ -5,13 +5,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
 import { InvitationsService } from './invitations.service';
 
@@ -24,9 +18,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
   version: '1',
 })
 export class InvitationsController {
-  constructor(
-    private readonly invitationsService: InvitationsService,
-  ) {}
+  constructor(private readonly invitationsService: InvitationsService) {}
 
   @Get(':token')
   @ApiOperation({
@@ -47,9 +39,7 @@ export class InvitationsController {
     status: 404,
     description: 'Invitation not found or has expired.',
   })
-  getInvitation(
-    @Param('token') token: string,
-  ) {
+  getInvitation(@Param('token') token: string) {
     return this.invitationsService.getInvitation(token);
   }
 
@@ -82,26 +72,14 @@ export class InvitationsController {
     status: 409,
     description: 'Invitation has already been accepted.',
   })
-  acceptInvitation(
-    @Param('token') token: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.invitationsService.acceptInvitation(
-      token,
-      user.id,
-    );
+  acceptInvitation(@Param('token') token: string, @CurrentUser() user: any) {
+    return this.invitationsService.acceptInvitation(token, user.id);
   }
 
   @Post(':token/decline')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT')
-  declineInvitation(
-    @Param('token') token: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.invitationsService.declineInvitation(
-      token,
-      user.id,
-    );
+  declineInvitation(@Param('token') token: string, @CurrentUser() user: any) {
+    return this.invitationsService.declineInvitation(token, user.id);
   }
 }

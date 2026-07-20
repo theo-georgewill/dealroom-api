@@ -1,8 +1,6 @@
 import { SendInvitationMailDto } from '../dto/send-invitation-mail.dto';
 
-export function invitationTemplate(
-  dto: SendInvitationMailDto,
-): string {
+export function invitationTemplate(dto: SendInvitationMailDto): string {
   return `
 <!DOCTYPE html>
 <html>

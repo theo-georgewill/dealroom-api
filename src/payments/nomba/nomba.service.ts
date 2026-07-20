@@ -91,9 +91,7 @@ export class NombaService {
               amount: data.amount.toFixed(2),
               currency: data.currency ?? 'NGN',
               customerEmail: data.customerEmail,
-              callbackUrl:
-                data.callbackUrl ??
-                process.env.NOMBA_CALLBACK_URL,
+              callbackUrl: data.callbackUrl ?? process.env.NOMBA_CALLBACK_URL,
             },
             tokenizeCard: data.tokenizeCard ?? true,
           },
@@ -109,8 +107,7 @@ export class NombaService {
 
       if (response.code !== '00') {
         throw new InternalServerErrorException(
-          response.description ??
-            'Unable to create Nomba checkout order',
+          response.description ?? 'Unable to create Nomba checkout order',
         );
       }
 
@@ -129,10 +126,7 @@ export class NombaService {
     }
   }
 
-  async lookupBankAccount(
-    bankCode: string,
-    accountNumber: string,
-  ) {
+  async lookupBankAccount(bankCode: string, accountNumber: string) {
     try {
       const token = await this.getAccessToken();
 
@@ -155,8 +149,7 @@ export class NombaService {
 
       if (response.code !== '00') {
         throw new InternalServerErrorException(
-          response.description ??
-            'Unable to lookup bank account',
+          response.description ?? 'Unable to lookup bank account',
         );
       }
 
@@ -169,8 +162,8 @@ export class NombaService {
 
       throw new InternalServerErrorException(
         error.response?.data?.description ??
-        error.response?.data?.message ??
-        'Unable to lookup bank account',
+          error.response?.data?.message ??
+          'Unable to lookup bank account',
       );
     }
   }
@@ -211,36 +204,33 @@ export class NombaService {
 
       if (response.code !== '00') {
         throw new InternalServerErrorException(
-          response.description ??
-            'Unable to create transfer',
+          response.description ?? 'Unable to create transfer',
         );
       }
 
       return response.data;
     } catch (error: any) {
-        console.log('================ TRANSFER ERROR ================');
-        console.log('Status:', error.response?.status);
+      console.log('================ TRANSFER ERROR ================');
+      console.log('Status:', error.response?.status);
 
-        console.log('Response:');
-        console.dir(error.response?.data, {
-          depth: null,
-          colors: true,
-        });
+      console.log('Response:');
+      console.dir(error.response?.data, {
+        depth: null,
+        colors: true,
+      });
 
-        console.log('Message:', error.message);
+      console.log('Message:', error.message);
 
-        throw new InternalServerErrorException(
-          error.response?.data?.description ??
+      throw new InternalServerErrorException(
+        error.response?.data?.description ??
           error.response?.data?.message ??
           JSON.stringify(error.response?.data) ??
           'Unable to initiate transfer',
-        );
-      }
+      );
+    }
   }
-  
-  async getTransfer(
-    merchantTxRef: string,
-  ) {
+
+  async getTransfer(merchantTxRef: string) {
     try {
       const token = await this.getAccessToken();
 
@@ -258,8 +248,7 @@ export class NombaService {
 
       if (response.code !== '00') {
         throw new InternalServerErrorException(
-          response.description ??
-            'Unable to fetch transfer',
+          response.description ?? 'Unable to fetch transfer',
         );
       }
 
@@ -272,10 +261,9 @@ export class NombaService {
 
       throw new InternalServerErrorException(
         error.response?.data?.description ??
-        error.response?.data?.message ??
-        'Unable to fetch transfer',
+          error.response?.data?.message ??
+          'Unable to fetch transfer',
       );
     }
   }
-
 }

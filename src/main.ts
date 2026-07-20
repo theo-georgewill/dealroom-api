@@ -1,7 +1,4 @@
-import { 
-  ValidationPipe,
-  VersioningType
- } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -37,9 +34,7 @@ async function bootstrap() {
   // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Deal Room API')
-    .setDescription(
-      'API documentation for the Deal Room escrow platform.',
-    )
+    .setDescription('API documentation for the Deal Room escrow platform.')
     .setVersion('1.0.0')
     .addBearerAuth(
       {

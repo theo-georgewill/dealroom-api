@@ -6,10 +6,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -18,20 +15,14 @@ export class S3StorageProvider {
   private readonly bucket: string;
   private readonly signedUrlExpiry: number;
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {
-    this.bucket = this.configService.getOrThrow<string>(
-      'R2_BUCKET_NAME',
-    );
+  constructor(private readonly configService: ConfigService) {
+    this.bucket = this.configService.getOrThrow<string>('R2_BUCKET_NAME');
 
     this.client = new S3Client({
       region: this.configService.getOrThrow<string>('R2_REGION'),
       endpoint: this.configService.getOrThrow<string>('R2_ENDPOINT'),
       credentials: {
-        accessKeyId: this.configService.getOrThrow<string>(
-          'R2_ACCESS_KEY_ID',
-        ),
+        accessKeyId: this.configService.getOrThrow<string>('R2_ACCESS_KEY_ID'),
         secretAccessKey: this.configService.getOrThrow<string>(
           'R2_SECRET_ACCESS_KEY',
         ),
@@ -96,9 +87,7 @@ export class S3StorageProvider {
   /**
    * Deletes an object from storage.
    */
-  async deleteObject(
-    key: string,
-  ): Promise<void> {
+  async deleteObject(key: string): Promise<void> {
     const command = new DeleteObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -110,9 +99,7 @@ export class S3StorageProvider {
   /**
    * Checks whether an object exists.
    */
-  async objectExists(
-    key: string,
-  ): Promise<boolean> {
+  async objectExists(key: string): Promise<boolean> {
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucket,

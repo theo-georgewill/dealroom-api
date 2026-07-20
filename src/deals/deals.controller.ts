@@ -43,8 +43,7 @@ export class DealsController {
   @Post()
   @ApiOperation({
     summary: 'Create a new deal',
-    description:
-      'Creates a new escrow deal for the authenticated user.',
+    description: 'Creates a new escrow deal for the authenticated user.',
   })
   @ApiBody({ type: CreateDealDto })
   @ApiResponse({
@@ -59,21 +58,14 @@ export class DealsController {
     status: 401,
     description: 'Unauthorized.',
   })
-  create(
-    @CurrentUser() user: any,
-    @Body() dto: CreateDealDto,
-  ) {
-    return this.dealsService.create(
-      user.id,
-      dto,
-    );
+  create(@CurrentUser() user: any, @Body() dto: CreateDealDto) {
+    return this.dealsService.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({
     summary: 'Get all deals',
-    description:
-      'Returns all deals that belong to the authenticated user.',
+    description: 'Returns all deals that belong to the authenticated user.',
   })
   @ApiResponse({
     status: 200,
@@ -83,21 +75,14 @@ export class DealsController {
     status: 401,
     description: 'Unauthorized.',
   })
-  findAll(
-    @CurrentUser() user: any,
-    @Query() query: ListDealsDto,
-  ) {
-    return this.dealsService.findAll(
-      user.id,
-      query,
-    );
+  findAll(@CurrentUser() user: any, @Query() query: ListDealsDto) {
+    return this.dealsService.findAll(user.id, query);
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Get a deal by ID',
-    description:
-      'Returns a single deal owned by the authenticated user.',
+    description: 'Returns a single deal owned by the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -112,21 +97,14 @@ export class DealsController {
     status: 404,
     description: 'Deal not found.',
   })
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.dealsService.findOne(
-      id,
-      user.id,
-    );
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.dealsService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({
     summary: 'Update a deal',
-    description:
-      'Updates an existing deal owned by the authenticated user.',
+    description: 'Updates an existing deal owned by the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -147,18 +125,13 @@ export class DealsController {
     @CurrentUser() user: any,
     @Body() dto: UpdateDealDto,
   ) {
-    return this.dealsService.update(
-      id,
-      user.id,
-      dto,
-    );
+    return this.dealsService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({
     summary: 'Delete a deal',
-    description:
-      'Deletes a deal owned by the authenticated user.',
+    description: 'Deletes a deal owned by the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -173,14 +146,8 @@ export class DealsController {
     status: 404,
     description: 'Deal not found.',
   })
-  remove(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.dealsService.remove(
-      id,
-      user.id,
-    );
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.dealsService.remove(id, user.id);
   }
 
   @Post(':dealId/invitations')
@@ -208,10 +175,6 @@ export class DealsController {
     @CurrentUser() user: any,
     @Body() dto: CreateInvitationDto,
   ) {
-    return this.invitationsService.create(
-      dealId,
-      user.id,
-      dto,
-    );
+    return this.invitationsService.create(dealId, user.id, dto);
   }
 }

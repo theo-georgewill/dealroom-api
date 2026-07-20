@@ -7,10 +7,7 @@ import { MailModule } from '../../mail/mail.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    MailModule,
-  ],
+  imports: [PrismaModule, MailModule],
   controllers: [InvitationsController],
   providers: [InvitationsService],
   exports: [InvitationsService],

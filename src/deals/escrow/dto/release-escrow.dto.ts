@@ -1,11 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsNumber,
-  IsString,
-  IsUUID,
-  Min,
-} from 'class-validator';
+import { IsNumber, IsString, IsUUID, Min } from 'class-validator';
 
 export class ReleaseEscrowDto {
   @ApiProperty({

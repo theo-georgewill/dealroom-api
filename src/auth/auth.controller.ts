@@ -4,14 +4,9 @@ import {
   Post,
   Res,
   Req,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
@@ -24,9 +19,7 @@ import { LoginDto } from './dto/login.dto';
   version: '1',
 })
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   private setAuthCookies(
     res: Response,
@@ -153,9 +146,7 @@ export class AuthController {
       },
     },
   })
-  logout(
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  logout(@Res({ passthrough: true }) res: Response) {
     this.clearAuthCookies(res);
 
     return {
@@ -186,11 +177,7 @@ export class AuthController {
 
     const { refreshToken: newRefreshToken, data } = result;
 
-    this.setAuthCookies(
-      res,
-      data.accessToken,
-      newRefreshToken,
-    );
+    this.setAuthCookies(res, data.accessToken, newRefreshToken);
 
     return {
       success: true,

@@ -1,4 +1,4 @@
-import { 
+import {
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -12,38 +12,25 @@ import { SendPasswordResetMailDto } from '../dto/send-password-reset-mail.dto';
 import { MailProvider } from '../interfaces/mail-provider.interface';
 import { invitationTemplate } from '../templates/invitation';
 
-
 @Injectable()
 export class BrevoProvider implements MailProvider {
   private readonly brevo: BrevoClient;
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private readonly configService: ConfigService) {
     this.brevo = new BrevoClient({
-      apiKey: this.configService.getOrThrow<string>(
-        'BREVO_API_KEY',
-      ),
+      apiKey: this.configService.getOrThrow<string>('BREVO_API_KEY'),
     });
   }
 
-  private readonly logger = new Logger(
-    BrevoProvider.name,
-  );
+  private readonly logger = new Logger(BrevoProvider.name);
 
-  async sendInvitation(
-    dto: SendInvitationMailDto,
-  ): Promise<void> {
+  async sendInvitation(dto: SendInvitationMailDto): Promise<void> {
     try {
       await this.brevo.transactionalEmails.sendTransacEmail({
         sender: {
-          email: this.configService.getOrThrow<string>(
-            'BREVO_SENDER_EMAIL',
-          ),
+          email: this.configService.getOrThrow<string>('BREVO_SENDER_EMAIL'),
           name:
-            this.configService.get<string>(
-              'BREVO_SENDER_NAME',
-            ) ?? 'DealRoom',
+            this.configService.get<string>('BREVO_SENDER_NAME') ?? 'DealRoom',
         },
         to: [
           {
@@ -60,15 +47,11 @@ export class BrevoProvider implements MailProvider {
         error instanceof Error ? error.stack : undefined,
       );
 
-      throw new InternalServerErrorException(
-        'Unable to send invitation email',
-      );
+      return;
     }
   }
 
-  async sendPasswordReset(
-    dto: SendPasswordResetMailDto,
-  ): Promise<void> {
+  async sendPasswordReset(dto: SendPasswordResetMailDto): Promise<void> {
     throw new Error('Not implemented.');
   }
 

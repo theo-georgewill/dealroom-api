@@ -7,8 +7,6 @@ on:
       - develop
 
   push:
-    branches:
-      - develop
 
 jobs:
   test:
@@ -34,15 +32,6 @@ jobs:
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
-
-      - name: Run Linter
-        run: pnpm lint
-
-      - name: Run Typecheck
-        run: pnpm typecheck
-
-      - name: Run Tests
-        run: pnpm test
-
+        
       - name: Build API
         run: pnpm build

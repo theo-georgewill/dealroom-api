@@ -1,4 +1,4 @@
-import { ParticipantRole } from "@prisma/client";
+import { ParticipantRole } from '@prisma/client';
 export class SendInvitationMailDto {
   to!: string;
   inviterName!: string;

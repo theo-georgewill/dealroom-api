@@ -8,18 +8,9 @@ import { NombaService } from './nomba/nomba.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    HttpModule,
-  ],
+  imports: [PrismaModule, HttpModule],
   controllers: [PaymentsController],
-  providers: [
-    PaymentsService,
-    NombaService,
-  ],
-  exports: [
-    PaymentsService,
-    NombaService,
-  ],
+  providers: [PaymentsService, NombaService],
+  exports: [PaymentsService, NombaService],
 })
 export class PaymentsModule {}

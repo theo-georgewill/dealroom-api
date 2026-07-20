@@ -15,9 +15,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 
 @Injectable()
 export class InvitationsService {
-  private readonly logger = new Logger(
-    InvitationsService.name,
-  );
+  private readonly logger = new Logger(InvitationsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -25,11 +23,7 @@ export class InvitationsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async create(
-    dealId: string,
-    userId: string,
-    dto: CreateInvitationDto,
-  ) {
+  async create(dealId: string, userId: string, dto: CreateInvitationDto) {
     const deal = await this.prisma.deal.findUnique({
       where: {
         id: dealId,
@@ -46,9 +40,7 @@ export class InvitationsService {
     });
 
     if (!deal) {
-      throw new NotFoundException(
-        'Deal not found',
-      );
+      throw new NotFoundException('Deal not found');
     }
 
     if (deal.creatorId !== userId) {
@@ -59,32 +51,28 @@ export class InvitationsService {
 
     const email = dto.email.trim().toLowerCase();
 
-    const existingInvitation =
-      await this.prisma.invitation.findFirst({
-        where: {
-          dealId,
-          email,
-          status: {
-            in: ['PENDING', 'ACCEPTED'],
-          },
+    const existingInvitation = await this.prisma.invitation.findFirst({
+      where: {
+        dealId,
+        email,
+        status: {
+          in: ['PENDING', 'ACCEPTED'],
         },
-      });
+      },
+    });
 
     if (existingInvitation) {
-      throw new BadRequestException(
-        'User has already been invited',
-      );
+      throw new BadRequestException('User has already been invited');
     }
 
-    const existingParticipant =
-      await this.prisma.dealParticipant.findFirst({
-        where: {
-          dealId,
-          user: {
-            email,
-          },
+    const existingParticipant = await this.prisma.dealParticipant.findFirst({
+      where: {
+        dealId,
+        user: {
+          email,
         },
-      });
+      },
+    });
 
     if (existingParticipant) {
       throw new BadRequestException(
@@ -94,27 +82,22 @@ export class InvitationsService {
 
     const token = randomBytes(32).toString('hex');
 
-    const invitation =
-      await this.prisma.invitation.create({
-        data: {
-          dealId,
-          email,
-          role: dto.role,
-          token,
-          invitedById: userId,
-          expiresAt: new Date(
-            Date.now() + 7 * 24 * 60 * 60 * 1000,
-          ),
-        },
-      });
+    const invitation = await this.prisma.invitation.create({
+      data: {
+        dealId,
+        email,
+        role: dto.role,
+        token,
+        invitedById: userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
 
-    const invitationUrl =
-      `${this.configService.getOrThrow<string>(
-        'FRONTEND_URL',
-      )}/invitations/${token}`;
+    const invitationUrl = `${this.configService.getOrThrow<string>(
+      'FRONTEND_URL',
+    )}/invitations/${token}`;
 
-    const inviterName =
-      `${deal.creator.firstName} ${deal.creator.lastName}`;
+    const inviterName = `${deal.creator.firstName} ${deal.creator.lastName}`;
 
     try {
       await this.mailService.sendInvitation({
@@ -128,9 +111,7 @@ export class InvitationsService {
     } catch (error) {
       this.logger.error(
         `Failed to send invitation email to ${invitation.email}`,
-        error instanceof Error
-          ? error.stack
-          : undefined,
+        error instanceof Error ? error.stack : undefined,
       );
     }
 
@@ -149,68 +130,65 @@ export class InvitationsService {
   }
 
   async getInvitation(token: string) {
-    const invitation =
-      await this.prisma.invitation.findUnique({
-        where: {
-          token,
-        },
-        include: {
-          deal: {
-            select: {
-              id: true,
-              title: true,
-              status: true,
-              property: {
-                select: {
-                  name: true,
-                  type: true,
-                  address: true,
-                  city: true,
-                  state: true,
-                  country: true,
-                  description: true,
-                  images: true,
-                },
+    const invitation = await this.prisma.invitation.findUnique({
+      where: {
+        token,
+      },
+      include: {
+        deal: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            property: {
+              select: {
+                name: true,
+                type: true,
+                address: true,
+                city: true,
+                state: true,
+                country: true,
+                description: true,
+                images: true,
               },
-              terms: {
-                select: {
-                  dealType: true,
-                  currency: true,
-                  dealValue: true,
-                  earnestMoney: true,
-                  closingDate: true,
-                  longStopDate: true,
-                  paymentStructure: true,
-                },
+            },
+            terms: {
+              select: {
+                dealType: true,
+                currency: true,
+                dealValue: true,
+                earnestMoney: true,
+                closingDate: true,
+                longStopDate: true,
+                paymentStructure: true,
               },
-              escrow: {
-                select: {
-                  amount: true,
-                  fundedAmount: true,
-                  fundingSource: true,
-                  holdingPeriod: true,
-                  status: true,
-                  releaseConditions: {
-                    orderBy: {
-                      sortOrder: 'asc',
-                    },
-                    select: {
-                      description: true,
-                      completed: true,
-                      sortOrder: true,
-                    },
+            },
+            escrow: {
+              select: {
+                amount: true,
+                fundedAmount: true,
+                fundingSource: true,
+                holdingPeriod: true,
+                status: true,
+                releaseConditions: {
+                  orderBy: {
+                    sortOrder: 'asc',
+                  },
+                  select: {
+                    description: true,
+                    completed: true,
+                    sortOrder: true,
                   },
                 },
               },
             },
           },
         },
-      });
+      },
+    });
 
     if (!invitation) {
-      throw new NotFoundException(
-        'Invitation not found',
-      );
+      throw new NotFoundException('Invitation not found');
     }
 
     return {
@@ -220,34 +198,24 @@ export class InvitationsService {
     };
   }
 
-  async acceptInvitation(
-    token: string,
-    userId: string,
-  ) {
+  async acceptInvitation(token: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const invitation =
-        await tx.invitation.findUnique({
-          where: {
-            token,
-          },
-        });
+      const invitation = await tx.invitation.findUnique({
+        where: {
+          token,
+        },
+      });
 
       if (!invitation) {
-        throw new NotFoundException(
-          'Invitation not found',
-        );
+        throw new NotFoundException('Invitation not found');
       }
 
       if (invitation.status !== 'PENDING') {
-        throw new BadRequestException(
-          'Invitation has already been used',
-        );
+        throw new BadRequestException('Invitation has already been used');
       }
 
       if (invitation.expiresAt < new Date()) {
-        throw new BadRequestException(
-          'Invitation has expired',
-        );
+        throw new BadRequestException('Invitation has expired');
       }
 
       const user = await tx.user.findUnique({
@@ -257,18 +225,11 @@ export class InvitationsService {
       });
 
       if (!user) {
-        throw new NotFoundException(
-          'User not found',
-        );
+        throw new NotFoundException('User not found');
       }
 
-      if (
-        user.email.toLowerCase() !==
-        invitation.email.toLowerCase()
-      ) {
-        throw new ForbiddenException(
-          'This invitation belongs to another user',
-        );
+      if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+        throw new ForbiddenException('This invitation belongs to another user');
       }
 
       await tx.dealParticipant.create({
@@ -291,13 +252,12 @@ export class InvitationsService {
         },
       });
 
-      const pendingInvitations =
-        await tx.invitation.count({
-          where: {
-            dealId: invitation.dealId,
-            status: 'PENDING',
-          },
-        });
+      const pendingInvitations = await tx.invitation.count({
+        where: {
+          dealId: invitation.dealId,
+          status: 'PENDING',
+        },
+      });
 
       if (pendingInvitations === 0) {
         await tx.deal.update({
@@ -317,34 +277,24 @@ export class InvitationsService {
     });
   }
 
-  async declineInvitation(
-    token: string,
-    userId: string,
-  ) {
+  async declineInvitation(token: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const invitation =
-        await tx.invitation.findUnique({
-          where: {
-            token,
-          },
-        });
+      const invitation = await tx.invitation.findUnique({
+        where: {
+          token,
+        },
+      });
 
       if (!invitation) {
-        throw new NotFoundException(
-          'Invitation not found',
-        );
+        throw new NotFoundException('Invitation not found');
       }
 
       if (invitation.status !== 'PENDING') {
-        throw new BadRequestException(
-          'Invitation has already been used',
-        );
+        throw new BadRequestException('Invitation has already been used');
       }
 
       if (invitation.expiresAt < new Date()) {
-        throw new BadRequestException(
-          'Invitation has expired',
-        );
+        throw new BadRequestException('Invitation has expired');
       }
 
       const user = await tx.user.findUnique({
@@ -354,18 +304,11 @@ export class InvitationsService {
       });
 
       if (!user) {
-        throw new NotFoundException(
-          'User not found',
-        );
+        throw new NotFoundException('User not found');
       }
 
-      if (
-        user.email.toLowerCase() !==
-        invitation.email.toLowerCase()
-      ) {
-        throw new ForbiddenException(
-          'This invitation belongs to another user',
-        );
+      if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+        throw new ForbiddenException('This invitation belongs to another user');
       }
 
       await tx.invitation.update({
