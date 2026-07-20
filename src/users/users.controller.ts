@@ -9,6 +9,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from './users.service';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT')
@@ -33,7 +34,7 @@ export class UsersController {
     status: 401,
     description: 'Unauthorized.',
   })
-  async me(@CurrentUser() user: any) {
+  async me(@CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
       data: await this.usersService.findById(user.id),

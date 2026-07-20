@@ -10,6 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthenticatedUser } from './types/authenticated-user.type';
 
 @Injectable()
 export class AuthService {
@@ -115,7 +116,7 @@ export class AuthService {
     return this.buildAuthResponse(user, 'User logged in successfully');
   }
 
-  async validateUser(userId: string) {
+  async validateUser(userId: string): Promise<AuthenticatedUser> {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new UnauthorizedException();

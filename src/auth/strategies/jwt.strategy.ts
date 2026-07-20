@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
 
 import { AuthService } from '../auth.service';
+import { AuthenticatedUser } from '../types/authenticated-user.type';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -22,7 +23,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; email: string }) {
+  async validate(
+    payload: { sub: string; email: string },
+  ): Promise<AuthenticatedUser> {
     return this.authService.validateUser(payload.sub);
   }
 }

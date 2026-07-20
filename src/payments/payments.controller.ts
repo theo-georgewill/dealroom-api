@@ -25,6 +25,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 import { InitializePaymentDto } from './dto/initialize-payment.dto';
 import { NombaWebhookDto } from './dto/nomba-webhook.dto';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 
 @ApiTags('Payments')
 @Controller({
@@ -59,7 +60,7 @@ export class PaymentsController {
     status: 401,
     description: 'Unauthorized.',
   })
-  initialize(@CurrentUser() user: any, @Body() dto: InitializePaymentDto) {
+  initialize(@CurrentUser() user: AuthenticatedUser, @Body() dto: InitializePaymentDto) {
     return this.paymentsService.initialize(user.id, dto);
   }
 
