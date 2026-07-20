@@ -19,6 +19,86 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
+  private async generateTokens(
+    user: {
+      id: string;
+      email: string;
+    }
+  ) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: process.env.JWT_SECRET!,
+        expiresIn: '15m',
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: process.env.JWT_REFRESH_SECRET!,
+        expiresIn: '7d',
+      }),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  private async saveRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ) {
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId,
+      },
+    });
+
+    const tokenHash = await bcrypt.hash(refreshToken, 12);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ),
+      },
+    });
+  }
+  private async buildAuthResponse(
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    }, 
+    message: string
+  ){
+    const tokens = await this.generateTokens(user);
+    await this.saveRefreshToken(
+      user.id,
+      tokens.refreshToken,
+    );
+    return {
+      success: true,
+      message: message,
+      data: {
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        },
+        accessToken: tokens.accessToken,
+      },
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.usersService.findByEmail(email);
@@ -72,55 +152,6 @@ export class AuthService {
     };
   }
 
-  private async generateTokens(user: {
-    id: string;
-    email: string;
-  }) {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-    };
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_SECRET!,
-        expiresIn: '15m',
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_REFRESH_SECRET!,
-        expiresIn: '7d',
-      }),
-    ]);
-
-    return {
-      accessToken,
-      refreshToken,
-    };
-  }
-
-  private async saveRefreshToken(
-    userId: string,
-    refreshToken: string,
-  ) {
-    await this.prisma.refreshToken.deleteMany({
-      where: {
-        userId,
-      },
-    });
-
-    const tokenHash = await bcrypt.hash(refreshToken, 12);
-
-    await this.prisma.refreshToken.create({
-      data: {
-        userId,
-        tokenHash,
-        expiresAt: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ),
-      },
-    });
-  }
-
   async refresh(refreshToken: string) {
     try {
       // Verify JWT signature and expiration
@@ -164,37 +195,5 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
-  }
-  
-  private async buildAuthResponse(
-    user: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-    }, 
-    message: string
-  ){
-    const tokens = await this.generateTokens(user);
-
-    await this.saveRefreshToken(
-      user.id,
-      tokens.refreshToken,
-    );
-
-    return {
-      success: true,
-      message: message,
-      data: {
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-        },
-        accessToken: tokens.accessToken,
-      },
-      refreshToken: tokens.refreshToken,
-    };
   }
 }
