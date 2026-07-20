@@ -60,9 +60,7 @@ export class BrevoProvider implements MailProvider {
         error instanceof Error ? error.stack : undefined,
       );
 
-      throw new InternalServerErrorException(
-        'Unable to send invitation email',
-      );
+      return;
     }
   }
 
