@@ -54,9 +54,7 @@ const dealInclude = {
 
 @Injectable()
 export class DealsService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private calculateProgress(status: DealStatus): number {
     switch (status) {
@@ -92,10 +90,7 @@ export class DealsService {
     }
   }
 
-  async create(
-    userId: string,
-    dto: CreateDealDto,
-  ) {
+  async create(userId: string, dto: CreateDealDto) {
     return this.prisma.$transaction(async (tx) => {
       const reference = await this.generateReference(tx);
 
@@ -174,9 +169,7 @@ export class DealsService {
           role: stakeholder.role,
           invitedById: userId,
           token: randomUUID(),
-          expiresAt: new Date(
-            Date.now() + 7 * 24 * 60 * 60 * 1000,
-          ),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         })),
       });
 
@@ -186,7 +179,7 @@ export class DealsService {
         },
         include: dealInclude,
       });
-      
+
       if (!createdDeal || !createdDeal.escrow) {
         throw new NotFoundException('Failed to load created deal');
       }
@@ -209,14 +202,11 @@ export class DealsService {
     });
   }
 
-  async findAll(
-    userId: string,
-    query: ListDealsDto,
-  ) {
+  async findAll(userId: string, query: ListDealsDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
-    
+
     const where: Prisma.DealWhereInput = {};
 
     switch (query.scope) {
@@ -317,10 +307,7 @@ export class DealsService {
     };
   }
 
-  async findOne(
-    id: string,
-    userId: string,
-  ) {
+  async findOne(id: string, userId: string) {
     const deal = await this.prisma.deal.findFirst({
       where: {
         id,
@@ -349,11 +336,7 @@ export class DealsService {
     };
   }
 
-  async update(
-    id: string,
-    userId: string,
-    dto: UpdateDealDto,
-  ) {
+  async update(id: string, userId: string, dto: UpdateDealDto) {
     const deal = await this.prisma.deal.findUnique({
       where: {
         id,
@@ -370,13 +353,8 @@ export class DealsService {
       );
     }
 
-    if (
-      deal.status === 'FUNDED' ||
-      deal.status === 'COMPLETED'
-    ) {
-      throw new ForbiddenException(
-        'This deal can no longer be modified',
-      );
+    if (deal.status === 'FUNDED' || deal.status === 'COMPLETED') {
+      throw new ForbiddenException('This deal can no longer be modified');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -463,13 +441,11 @@ export class DealsService {
           });
 
           await tx.escrowReleaseCondition.createMany({
-            data: dto.escrow.releaseConditions.map(
-              (description, index) => ({
-                escrowId: escrow!.id,
-                description,
-                sortOrder: index + 1,
-              }),
-            ),
+            data: dto.escrow.releaseConditions.map((description, index) => ({
+              escrowId: escrow!.id,
+              description,
+              sortOrder: index + 1,
+            })),
           });
         }
       }
@@ -499,10 +475,7 @@ export class DealsService {
     });
   }
 
-  async remove(
-    id: string,
-    userId: string,
-  ) {
+  async remove(id: string, userId: string) {
     const deal = await this.prisma.deal.findUnique({
       where: {
         id,
@@ -519,13 +492,8 @@ export class DealsService {
       );
     }
 
-    if (
-      deal.status === 'FUNDED' ||
-      deal.status === 'COMPLETED'
-    ) {
-      throw new ForbiddenException(
-        'This deal can no longer be deleted',
-      );
+    if (deal.status === 'FUNDED' || deal.status === 'COMPLETED') {
+      throw new ForbiddenException('This deal can no longer be deleted');
     }
 
     await this.prisma.deal.delete({
@@ -540,9 +508,7 @@ export class DealsService {
     };
   }
 
-  private async generateReference(
-    tx: Prisma.TransactionClient,
-  ) {
+  private async generateReference(tx: Prisma.TransactionClient) {
     while (true) {
       const reference = `DLR-${randomUUID()
         .replace(/-/g, '')

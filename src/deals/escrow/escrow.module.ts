@@ -6,6 +6,6 @@ import { PaymentsModule } from '../../payments/payments.module';
 @Module({
   imports: [PaymentsModule],
   controllers: [EscrowController],
-  providers: [EscrowService]
+  providers: [EscrowService],
 })
 export class EscrowModule {}

@@ -1,7 +1,4 @@
-import {
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { SendEmailVerificationMailDto } from './dto/send-email-verification-mail.dto';
 import { SendInvitationMailDto } from './dto/send-invitation-mail.dto';
@@ -15,15 +12,11 @@ export class MailService {
     private readonly provider: MailProvider,
   ) {}
 
-  async sendInvitation(
-    dto: SendInvitationMailDto,
-  ): Promise<void> {
+  async sendInvitation(dto: SendInvitationMailDto): Promise<void> {
     await this.provider.sendInvitation(dto);
   }
 
-  async sendPasswordReset(
-    dto: SendPasswordResetMailDto,
-  ): Promise<void> {
+  async sendPasswordReset(dto: SendPasswordResetMailDto): Promise<void> {
     await this.provider.sendPasswordReset(dto);
   }
 

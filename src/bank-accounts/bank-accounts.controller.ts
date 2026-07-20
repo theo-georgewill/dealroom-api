@@ -29,31 +29,21 @@ import { CreateBankAccountDto } from './dto/create-bank-account.dto';
   version: '1',
 })
 export class BankAccountsController {
-  constructor(
-    private readonly bankAccountsService: BankAccountsService,
-  ) {}
+  constructor(private readonly bankAccountsService: BankAccountsService) {}
 
   @Post('lookup')
   @ApiOperation({
     summary: 'Lookup bank account',
   })
-  lookup(
-    @Body() dto: LookupBankAccountDto,
-  ) {
-    return this.bankAccountsService.lookup(
-      dto.bankCode,
-      dto.accountNumber,
-    );
+  lookup(@Body() dto: LookupBankAccountDto) {
+    return this.bankAccountsService.lookup(dto.bankCode, dto.accountNumber);
   }
 
   @Post()
   @ApiOperation({
     summary: 'Save bank account',
   })
-  create(
-    @CurrentUser() user: any,
-    @Body() dto: CreateBankAccountDto,
-  ) {
+  create(@CurrentUser() user: any, @Body() dto: CreateBankAccountDto) {
     return this.bankAccountsService.create(
       user.id,
       dto.bankCode,
@@ -65,12 +55,8 @@ export class BankAccountsController {
   @ApiOperation({
     summary: 'Get my bank accounts',
   })
-  findMine(
-    @CurrentUser() user: any,
-  ) {
-    return this.bankAccountsService.findMine(
-      user.id,
-    );
+  findMine(@CurrentUser() user: any) {
+    return this.bankAccountsService.findMine(user.id);
   }
 
   @Delete(':id')
@@ -81,13 +67,7 @@ export class BankAccountsController {
     name: 'id',
     description: 'Bank account ID',
   })
-  remove(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
-    return this.bankAccountsService.remove(
-      user.id,
-      id,
-    );
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.bankAccountsService.remove(user.id, id);
   }
 }

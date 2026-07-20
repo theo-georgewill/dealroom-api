@@ -58,63 +58,45 @@ export class PaymentsService {
       actual.length !== expectedBuffer.length ||
       !crypto.timingSafeEqual(actual, expectedBuffer)
     ) {
-      throw new UnauthorizedException(
-        'Invalid webhook signature',
-      );
+      throw new UnauthorizedException('Invalid webhook signature');
     }
   }
-  
-  async initialize(
-    userId: string,
-    dto: InitializePaymentDto,
-  ) {
-    const escrow =
-      await this.prisma.escrow.findUnique({
-        where: {
-          id: dto.escrowId,
-        },
-        include: {
-          deal: {
-            include: {
-              participants: true,
-            },
+
+  async initialize(userId: string, dto: InitializePaymentDto) {
+    const escrow = await this.prisma.escrow.findUnique({
+      where: {
+        id: dto.escrowId,
+      },
+      include: {
+        deal: {
+          include: {
+            participants: true,
           },
         },
-      });
+      },
+    });
 
     if (!escrow) {
-      throw new NotFoundException(
-        'Escrow not found',
-      );
+      throw new NotFoundException('Escrow not found');
     }
 
-    const participant =
-      escrow.deal.participants.find(
-        (p) =>
-          p.userId === userId &&
-          p.role === 'BUYER',
-      );
+    const participant = escrow.deal.participants.find(
+      (p) => p.userId === userId && p.role === 'BUYER',
+    );
 
     if (!participant) {
-      throw new ForbiddenException(
-        'Only the buyer can fund this escrow',
-      );
+      throw new ForbiddenException('Only the buyer can fund this escrow');
     }
 
     if (escrow.status === 'FUNDED') {
-      throw new BadRequestException(
-        'Escrow has already been fully funded',
-      );
+      throw new BadRequestException('Escrow has already been fully funded');
     }
 
     if (
-      Number(dto.amount) +
-        Number(escrow.fundedAmount) >
+      Number(dto.amount) + Number(escrow.fundedAmount) >
       Number(escrow.amount)
     ) {
-      throw new BadRequestException(
-        'Funding exceeds escrow amount',
-      );
+      throw new BadRequestException('Funding exceeds escrow amount');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -127,19 +109,16 @@ export class PaymentsService {
     });
 
     if (!user) {
-      throw new NotFoundException(
-        'User not found',
-      );
+      throw new NotFoundException('User not found');
     }
 
     const merchantTxRef = `pay_${crypto.randomUUID()}`;
 
-    const payment =
-      await this.nomba.createCheckoutOrder({
-        amount: dto.amount,
-        orderReference: merchantTxRef,
-        customerEmail: user.email,
-      });
+    const payment = await this.nomba.createCheckoutOrder({
+      amount: dto.amount,
+      orderReference: merchantTxRef,
+      customerEmail: user.email,
+    });
 
     await this.prisma.payment.create({
       data: {
@@ -157,10 +136,8 @@ export class PaymentsService {
       success: true,
       message: 'Checkout initialized',
       data: {
-        checkoutUrl: 
-          payment.checkoutLink,
-        orderReference:
-          payment.orderReference,
+        checkoutUrl: payment.checkoutLink,
+        orderReference: payment.orderReference,
       },
     };
   }
@@ -170,11 +147,7 @@ export class PaymentsService {
     timestamp: string,
     payload: NombaWebhookDto,
   ) {
-    this.verifyWebhookSignature(
-      signature,
-      timestamp,
-      payload,
-    );
+    this.verifyWebhookSignature(signature, timestamp, payload);
 
     if (payload.event_type !== 'payment_success') {
       return {
@@ -182,13 +155,12 @@ export class PaymentsService {
         message: 'Event ignored',
       };
     }
-    
-    const existing =
-      await this.prisma.webhookEvent.findUnique({
-        where: {
-          requestId: payload.requestId,
-        },
-      });
+
+    const existing = await this.prisma.webhookEvent.findUnique({
+      where: {
+        requestId: payload.requestId,
+      },
+    });
 
     if (existing) {
       return {
@@ -197,21 +169,17 @@ export class PaymentsService {
       };
     }
 
-    const paymentRecord =
-      await this.prisma.payment.findUnique({
-        where: {
-          merchantTxRef:
-            payload.data.transaction.merchantTxRef,
-        },
-        include: {
-          escrow: true,
-        },
-      });
+    const paymentRecord = await this.prisma.payment.findUnique({
+      where: {
+        merchantTxRef: payload.data.transaction.merchantTxRef,
+      },
+      include: {
+        escrow: true,
+      },
+    });
 
     if (!paymentRecord) {
-      throw new NotFoundException(
-        'Payment not found',
-      );
+      throw new NotFoundException('Payment not found');
     }
 
     if (paymentRecord.status === 'SUCCESS') {
@@ -221,8 +189,7 @@ export class PaymentsService {
       };
     }
 
-    const rawPayload =
-      instanceToPlain(payload) as Prisma.InputJsonValue;
+    const rawPayload = instanceToPlain(payload) as Prisma.InputJsonValue;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.webhookEvent.create({
@@ -241,8 +208,7 @@ export class PaymentsService {
         data: {
           status: 'SUCCESS',
           paidAt: new Date(),
-          providerReference:
-            payload.data.transaction.transactionId,
+          providerReference: payload.data.transaction.transactionId,
         },
       });
 
@@ -267,20 +233,16 @@ export class PaymentsService {
         data: {
           fundedAmount: {
             increment: new Prisma.Decimal(
-              payload.data.transaction.transactionAmount
+              payload.data.transaction.transactionAmount,
             ),
           },
         },
       });
 
-      const funded = Number(
-        escrow.fundedAmount,
-      );
+      const funded = Number(escrow.fundedAmount);
 
       const status =
-        funded >= Number(escrow.amount)
-          ? 'FUNDED'
-          : 'PARTIALLY_FUNDED';
+        funded >= Number(escrow.amount) ? 'FUNDED' : 'PARTIALLY_FUNDED';
 
       await tx.escrow.update({
         where: {
@@ -288,10 +250,7 @@ export class PaymentsService {
         },
         data: {
           status,
-          fundedAt:
-            status === 'FUNDED'
-              ? new Date()
-              : null,
+          fundedAt: status === 'FUNDED' ? new Date() : null,
         },
       });
 

@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -28,10 +21,7 @@ import { ReleaseEscrowDto } from './dto/release-escrow.dto';
   version: '1',
 })
 export class EscrowController {
-  constructor(
-    private readonly escrowService: EscrowService,
-  ) {}
-
+  constructor(private readonly escrowService: EscrowService) {}
 
   @Get()
   @ApiOperation({
@@ -56,14 +46,8 @@ export class EscrowController {
     status: 404,
     description: 'Escrow not found.',
   })
-  findByDeal(
-    @Param('dealId') dealId: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.escrowService.findByDeal(
-      dealId,
-      user.id,
-    );
+  findByDeal(@Param('dealId') dealId: string, @CurrentUser() user: any) {
+    return this.escrowService.findByDeal(dealId, user.id);
   }
 
   @Post('release')
@@ -97,10 +81,6 @@ export class EscrowController {
     @CurrentUser() user: any,
     @Body() dto: ReleaseEscrowDto,
   ) {
-    return this.escrowService.release(
-      dealId,
-      user.id,
-      dto,
-    );
+    return this.escrowService.release(dealId, user.id, dto);
   }
 }

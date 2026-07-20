@@ -1,8 +1,4 @@
-import {
-  IsMimeType,
-  IsNumber,
-  IsString,
-} from 'class-validator';
+import { IsMimeType, IsNumber, IsString } from 'class-validator';
 
 export class CompleteUploadDto {
   @IsString()

@@ -26,17 +26,13 @@ import { StorageService } from './storage.service';
 @UseGuards(JwtAuthGuard)
 @Controller('storage')
 export class StorageController {
-  constructor(
-    private readonly storageService: StorageService,
-  ) {}
+  constructor(private readonly storageService: StorageService) {}
 
   @Post('upload-url')
   @ApiOperation({
     summary: 'Generate a pre-signed upload URL',
   })
-  createUploadUrl(
-    @Body() dto: CreateUploadUrlDto,
-  ) {
+  createUploadUrl(@Body() dto: CreateUploadUrlDto) {
     return this.storageService.createUploadUrl(dto);
   }
 
@@ -48,10 +44,7 @@ export class StorageController {
     @Body() dto: CompleteUploadDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.storageService.completeUpload(
-      dto,
-      user.id,
-    );
+    return this.storageService.completeUpload(dto, user.id);
   }
 
   @Get(':fileId/download')
@@ -61,9 +54,7 @@ export class StorageController {
   @ApiParam({
     name: 'fileId',
   })
-  createDownloadUrl(
-    @Param('fileId') fileId: string,
-  ) {
+  createDownloadUrl(@Param('fileId') fileId: string) {
     return this.storageService.createDownloadUrl(fileId);
   }
 
@@ -74,9 +65,7 @@ export class StorageController {
   @ApiParam({
     name: 'fileId',
   })
-  deleteFile(
-    @Param('fileId') fileId: string,
-  ) {
+  deleteFile(@Param('fileId') fileId: string) {
     return this.storageService.deleteFile(fileId);
   }
 }

@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { NombaService } from '../payments/nomba/nomba.service';
@@ -13,29 +10,15 @@ export class BankAccountsService {
     private readonly nomba: NombaService,
   ) {}
 
-  async lookup(
-    bankCode: string,
-    accountNumber: string,
-  ) {
+  async lookup(bankCode: string, accountNumber: string) {
     return {
       success: true,
-      data: await this.nomba.lookupBankAccount(
-        bankCode,
-        accountNumber,
-      ),
+      data: await this.nomba.lookupBankAccount(bankCode, accountNumber),
     };
   }
 
-  async create(
-    userId: string,
-    bankCode: string,
-    accountNumber: string,
-  ) {
-    const account =
-      await this.nomba.lookupBankAccount(
-        bankCode,
-        accountNumber,
-      );
+  async create(userId: string, bankCode: string, accountNumber: string) {
+    const account = await this.nomba.lookupBankAccount(bankCode, accountNumber);
 
     const existing = await this.prisma.bankAccount.findUnique({
       where: {
@@ -54,57 +37,50 @@ export class BankAccountsService {
       };
     }
 
-    const bankAccount = 
-      await this.prisma.bankAccount.create({
-        data: {
-          userId,
-          bankCode,
-          accountNumber,
-          accountName: account.accountName,
-          verifiedAt: new Date(),
-        },
-      });
+    const bankAccount = await this.prisma.bankAccount.create({
+      data: {
+        userId,
+        bankCode,
+        accountNumber,
+        accountName: account.accountName,
+        verifiedAt: new Date(),
+      },
+    });
 
-      return {
-        success: true, 
-        message: 'Bank account added successfully',
-        data: bankAccount,
-      }
+    return {
+      success: true,
+      message: 'Bank account added successfully',
+      data: bankAccount,
+    };
   }
 
   async findMine(userId: string) {
-    const account =
-      await this.prisma.bankAccount.findMany({
-        where: {
-          userId,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+    const account = await this.prisma.bankAccount.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
     return {
       success: true,
       message: 'Bank account retrieved successfully',
-      data: account,};
+      data: account,
+    };
   }
 
-  async remove(
-    userId: string,
-    bankAccountId: string,
-  ) {
-    const account =
-      await this.prisma.bankAccount.findFirst({
-        where: {
-          id: bankAccountId,
-          userId,
-        },
-      });
+  async remove(userId: string, bankAccountId: string) {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: {
+        id: bankAccountId,
+        userId,
+      },
+    });
 
     if (!account) {
-      throw new NotFoundException(
-        'Bank account not found',
-      );
+      throw new NotFoundException('Bank account not found');
     }
 
     await this.prisma.bankAccount.delete({

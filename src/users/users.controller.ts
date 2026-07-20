@@ -1,8 +1,4 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -22,15 +18,12 @@ import { UsersService } from './users.service';
   version: '1',
 })
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
   @ApiOperation({
     summary: 'Get current user profile',
-    description:
-      'Retrieves the profile of the currently authenticated user.',
+    description: 'Retrieves the profile of the currently authenticated user.',
   })
   @ApiResponse({
     status: 200,
@@ -40,14 +33,10 @@ export class UsersController {
     status: 401,
     description: 'Unauthorized.',
   })
-  async me(
-    @CurrentUser() user: any,
-  ) {
+  async me(@CurrentUser() user: any) {
     return {
       success: true,
-      data: await this.usersService.findById(
-        user.id,
-      ),
+      data: await this.usersService.findById(user.id),
     };
   }
 }

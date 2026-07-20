@@ -19,12 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  private async generateTokens(
-    user: {
-      id: string;
-      email: string;
-    }
-  ) {
+  private async generateTokens(user: { id: string; email: string }) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -47,10 +42,7 @@ export class AuthService {
     };
   }
 
-  private async saveRefreshToken(
-    userId: string,
-    refreshToken: string,
-  ) {
+  private async saveRefreshToken(userId: string, refreshToken: string) {
     await this.prisma.refreshToken.deleteMany({
       where: {
         userId,
@@ -63,9 +55,7 @@ export class AuthService {
       data: {
         userId,
         tokenHash,
-        expiresAt: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
   }
@@ -75,14 +65,11 @@ export class AuthService {
       firstName: string;
       lastName: string;
       email: string;
-    }, 
-    message: string
-  ){
+    },
+    message: string,
+  ) {
     const tokens = await this.generateTokens(user);
-    await this.saveRefreshToken(
-      user.id,
-      tokens.refreshToken,
-    );
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
     return {
       success: true,
       message: message,
@@ -112,10 +99,7 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    return this.buildAuthResponse(
-      user,
-      'User registered successfully'
-    );
+    return this.buildAuthResponse(user, 'User registered successfully');
   }
 
   async login(dto: LoginDto) {
@@ -124,17 +108,11 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
-    const passwordMatches = await bcrypt.compare(
-      dto.password,
-      user.password,
-    );
+    const passwordMatches = await bcrypt.compare(dto.password, user.password);
     if (!passwordMatches) {
       throw new UnauthorizedException('Invalid email or password');
     }
-    return this.buildAuthResponse(
-      user,
-      'User logged in successfully'
-    );
+    return this.buildAuthResponse(user, 'User logged in successfully');
   }
 
   async validateUser(userId: string) {
@@ -171,10 +149,7 @@ export class AuthService {
       }
 
       // Compare incoming token with hashed token in DB
-      const isValid = await bcrypt.compare(
-        refreshToken,
-        storedToken.tokenHash,
-      );
+      const isValid = await bcrypt.compare(refreshToken, storedToken.tokenHash);
 
       if (!isValid) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -188,10 +163,7 @@ export class AuthService {
       }
 
       // Issue fresh tokens and rotate refresh token
-      return this.buildAuthResponse(
-        user,
-        'Token refreshed successfully',
-      );
+      return this.buildAuthResponse(user, 'Token refreshed successfully');
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
