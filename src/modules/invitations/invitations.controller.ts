@@ -40,7 +40,7 @@ export class InvitationsController {
     description: 'Invitation not found or has expired.',
   })
   getInvitation(@Param('token') token: string) {
-    return this.invitationsService.getInvitation(token);
+    return this.invitationsService.findByToken(token);
   }
 
   @Post(':token/accept')
@@ -76,7 +76,7 @@ export class InvitationsController {
     @Param('token') token: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invitationsService.acceptInvitation(token, user.id);
+    return this.invitationsService.accept(token, user.id);
   }
 
   @Post(':token/decline')
@@ -86,6 +86,6 @@ export class InvitationsController {
     @Param('token') token: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invitationsService.declineInvitation(token, user.id);
+    return this.invitationsService.decline(token, user.id);
   }
 }

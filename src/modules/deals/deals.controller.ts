@@ -181,4 +181,90 @@ export class DealsController {
   ) {
     return this.invitationsService.create(dealId, user.id, dto);
   }
+
+  @Get(':dealId/invitations')
+  @ApiOperation({
+    summary: 'List deal invitations',
+    description:
+      'Returns all invitations for a deal owned by the authenticated user.',
+  })
+  @ApiParam({
+    name: 'dealId',
+    description: 'The unique identifier of the deal.',
+    example: 'b3d1d17d-f3d7-45d8-9f3c-5b13b0d7eec3',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invitations retrieved successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Deal not found.',
+  })
+  listInvitations(
+    @Param('dealId') dealId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.invitationsService.listForDeal(dealId, user.id);
+  }
+
+  @Post(':dealId/invitations/:invitationId/resend')
+  @ApiOperation({
+    summary: 'Resend an invitation',
+    description:
+      'Generates a new invitation token, extends the expiry date and resends the invitation email.',
+  })
+  @ApiParam({
+    name: 'dealId',
+    description: 'The unique identifier of the deal.',
+  })
+  @ApiParam({
+    name: 'invitationId',
+    description: 'The unique identifier of the invitation.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invitation resent successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Invitation not found.',
+  })
+  resendInvitation(
+    @Param('dealId') dealId: string,
+    @Param('invitationId') invitationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.invitationsService.resend(dealId, invitationId, user.id);
+  }
+
+  @Patch(':dealId/invitations/:invitationId/cancel')
+  @ApiOperation({
+    summary: 'Cancel an invitation',
+    description:
+      'Cancels a pending invitation for a deal owned by the authenticated user.',
+  })
+  @ApiParam({
+    name: 'dealId',
+    description: 'The unique identifier of the deal.',
+  })
+  @ApiParam({
+    name: 'invitationId',
+    description: 'The unique identifier of the invitation.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invitation cancelled successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Invitation not found.',
+  })
+  cancelInvitation(
+    @Param('dealId') dealId: string,
+    @Param('invitationId') invitationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.invitationsService.cancel(dealId, invitationId, user.id);
+  }
 }

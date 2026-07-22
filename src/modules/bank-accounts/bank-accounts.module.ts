@@ -7,10 +7,7 @@ import { BankAccountsController } from './bank-accounts.controller';
 import { BankAccountsService } from './bank-accounts.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    PaymentIntegrationModule,
-  ],
+  imports: [PrismaModule, PaymentIntegrationModule],
   controllers: [BankAccountsController],
   providers: [BankAccountsService],
 })
