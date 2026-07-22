@@ -1,0 +1,15 @@
+import { Module } from '@nestjs/common';
+
+import { DealsController } from './deals.controller';
+import { DealsService } from './deals.service';
+
+import { PrismaModule } from '../../core/prisma/prisma.module';
+import { InvitationsModule } from '../invitations/invitations.module';
+
+@Module({
+  imports: [PrismaModule, InvitationsModule],
+  controllers: [DealsController],
+  providers: [DealsService],
+  exports: [DealsService],
+})
+export class DealsModule {}
