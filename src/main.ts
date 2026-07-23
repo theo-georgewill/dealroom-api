@@ -3,25 +3,32 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+
   app.use(cookieParser());
 
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
   });
+  
   // Enable CORS
   app.enableCors({
     origin: [
       'http://localhost:5173',
       'http://localhost:3000',
-      process.env.FRONTEND_URL,
+      configService.get<string>('FRONTEND_URL'),
     ],
     credentials: true,
   });
 
+  const frontendUrl = configService.get<string>('FRONTEND_URL');
+  console.log('FRONTEND_URL:', frontendUrl);
+  
   // Global validation
   app.useGlobalPipes(
     new ValidationPipe({
