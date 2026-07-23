@@ -26,9 +26,6 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL');
-  console.log('FRONTEND_URL:', frontendUrl);
-  
   // Global validation
   app.useGlobalPipes(
     new ValidationPipe({
