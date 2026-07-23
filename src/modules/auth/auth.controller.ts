@@ -32,12 +32,14 @@ export class AuthController {
     accessToken: string,
     refreshToken: string,
   ) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const commonOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
-    };
+    } as const;
 
     res.cookie('accessToken', accessToken, {
       ...commonOptions,
@@ -51,12 +53,13 @@ export class AuthController {
   }
 
   private clearAuthCookies(res: Response) {
+    const isProduction = process.env.NODE_ENV === 'production';
     const commonOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
-    };
+    } as const;
 
     res.clearCookie('accessToken', commonOptions);
     res.clearCookie('refreshToken', commonOptions);
