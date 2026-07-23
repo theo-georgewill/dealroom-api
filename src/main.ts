@@ -15,14 +15,16 @@ async function bootstrap() {
     type: VersioningType.URI,
     defaultVersion: '1',
   });
-  
+
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    configService.get<string>('FRONTEND_URL'),
+  ].filter((origin): origin is string => Boolean(origin));
+
   // Enable CORS
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      configService.get<string>('FRONTEND_URL'),
-    ],
+    origin: allowedOrigins,
     credentials: true,
   });
 
