@@ -125,13 +125,23 @@ enum Currency {
   EUR
 }
 
-enum FileCategory {
-  PROPERTY_IMAGE
-  CONTRACT
-  RECEIPT
-  DUE_DILIGENCE
-  GOVERNMENT_DOCUMENT
+enum DocumentType {
+  SALE_AGREEMENT
+  DEED_OF_ASSIGNMENT
+  SURVEY_PLAN
+  TITLE_DOCUMENT
+  PROOF_OF_PAYMENT
+  GOVERNMENT_ID
+  UTILITY_BILL
+  BANK_STATEMENT
+  KYC
   OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model User {
@@ -152,7 +162,9 @@ model User {
   sentInvitations     Invitation[]      @relation("InvitationSender")
   refreshTokens       RefreshToken[]
   bankAccounts        BankAccount[]
-  uploadedFiles       File[]
+  uploadedFiles       StorageFile[]     @relation("StorageFileUploader")
+  uploadedDocuments   Document[]        @relation("DocumentUploader")
+  approvedDocuments   Document[]        @relation("DocumentApprover")
 }
 
 model RefreshToken {
@@ -197,7 +209,7 @@ model Deal {
   escrow       Escrow?
   participants DealParticipant[]
   invitations  Invitation[]
-  files        File[]
+  documents    Document[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -372,23 +384,45 @@ model WebhookEvent {
   @@index([processed])
 }
 
-model File {
+model StorageFile {
   id           String       @id @default(cuid())
   originalName String
-  filename     String
   mimeType     String
   size         Int
   bucket       String
   key          String       @unique
-  category     FileCategory @default(OTHER)
   uploadedById String
-  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
-  dealId       String?
-  deal         Deal?        @relation(fields: [dealId], references: [id])
+  uploadedBy   User         @relation("StorageFileUploader", fields: [uploadedById], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-
-  @@index([dealId])
+  document     Document?
+  
   @@index([uploadedById])
-  @@index([category])
+}
+
+model Document {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  type          DocumentType
+  status        DocumentStatus @default(PENDING)
+  dealId        String
+  deal          Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  storageFileId String         @unique
+  storageFile   StorageFile    @relation(fields: [storageFileId], references: [id], onDelete: Cascade)
+  uploadedById  String
+  uploadedBy    User           @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  approvedById  String?
+  approvedBy    User?          @relation("DocumentApprover", fields: [approvedById], references: [id])
+
+  approvedAt DateTime?
+
+  rejectionReason String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([dealId, createdAt])
+  @@index([type])
+  @@index([status])
 }
