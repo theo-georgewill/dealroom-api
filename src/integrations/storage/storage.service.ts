@@ -1,10 +1,12 @@
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
 import { CompleteUploadDto } from './dto/complete-upload.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { S3StorageProvider } from './providers/s3-storage-provider';
+import { Prisma, StorageFile } from '@prisma/client';
+import { CreateUploadUrlResponse } from './dto/create-upload-url.response';
+import { CreateDownloadUrlResponse } from './dto/create-download-url.response';
 
 @Injectable()
 export class StorageService {
@@ -13,39 +15,26 @@ export class StorageService {
     private readonly storageProvider: S3StorageProvider,
   ) {}
 
-  private generateObjectKey(dealId: string, filename: string): string {
-    const extension = extname(filename);
-
-    return `deals/${dealId}/documents/${randomUUID()}${extension}`;
-  }
-
-  async createUploadUrl(dto: CreateUploadUrlDto) {
-    const deal = await this.prisma.deal.findUnique({
-      where: {
-        id: dto.dealId,
-      },
-    });
-
-    if (!deal) {
-      throw new NotFoundException('Deal not found.');
-    }
-
-    const key = this.generateObjectKey(dto.dealId, dto.filename);
-
-    const uploadUrl = await this.storageProvider.createUploadUrl(
-      key,
-      dto.contentType,
-    );
-
+  async createUploadUrl(
+    key: string,
+    mimeType: string,
+  ): Promise<CreateUploadUrlResponse>  {
     return {
-      uploadUrl,
+      uploadUrl: await this.storageProvider.createUploadUrl(
+        key,
+        mimeType,
+      ),
       key,
       expiresIn: this.storageProvider.getSignedUrlExpiry(),
     };
   }
 
-  async completeUpload(dto: CompleteUploadDto, userId: string) {
-    const existing = await this.prisma.file.findUnique({
+  async completeUpload(
+    dto: CompleteUploadDto,
+    userId: string,
+    prisma: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<StorageFile> {
+    const existing = await prisma.storageFile.findUnique({
       where: {
         key: dto.key,
       },
@@ -60,65 +49,64 @@ export class StorageService {
       throw new NotFoundException('Uploaded file not found.');
     }
 
-    const deal = await this.prisma.deal.findUnique({
-      where: {
-        id: dto.dealId,
-      },
-    });
-
-    if (!deal) {
-      throw new NotFoundException('Deal not found.');
-    }
-
-    return this.prisma.file.create({
+    return prisma.storageFile.create({
       data: {
         originalName: dto.originalName,
-        filename: dto.originalName,
-        mimeType: dto.contentType,
+        mimeType: dto.mimeType,
         size: dto.size,
-
         bucket: this.storageProvider.getBucketName(),
         key: dto.key,
-
         uploadedById: userId,
-        dealId: dto.dealId,
       },
     });
   }
 
-  async createDownloadUrl(fileId: string) {
-    const file = await this.prisma.file.findUnique({
-      where: {
-        id: fileId,
-      },
-    });
-
-    if (!file) {
-      throw new NotFoundException('File not found.');
-    }
-
+  async createDownloadUrl(
+    fileId: string
+  ): Promise<CreateDownloadUrlResponse> {
+    const file = await this.findStorageFileOrThrow(fileId);
     return {
       url: await this.storageProvider.createDownloadUrl(file.key),
     };
   }
 
-  async deleteFile(fileId: string) {
-    const file = await this.prisma.file.findUnique({
-      where: {
-        id: fileId,
-      },
-    });
-
-    if (!file) {
-      throw new NotFoundException('File not found.');
-    }
+  async deleteStorageFile(
+    fileId: string,
+    prisma: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    const file = await this.findStorageFileOrThrow(fileId, prisma);
 
     await this.storageProvider.deleteObject(file.key);
 
-    await this.prisma.file.delete({
+    await prisma.storageFile.delete({
       where: {
         id: file.id,
       },
     });
+  }
+
+  generateObjectKey( 
+    path:string,
+    filename: string
+  ): string {
+    const extension = extname(filename);
+    return `${path}/${randomUUID()}${extension}`;
+  }
+
+  private async findStorageFileOrThrow(
+    id: string,
+    prisma: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<StorageFile> {
+    const file = await prisma.storageFile.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!file) {
+      throw new NotFoundException('Storage file not found.');
+    }
+
+    return file;
   }
 }
