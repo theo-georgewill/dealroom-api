@@ -1,8 +1,6 @@
 import { IsMimeType, IsNumber, IsString } from 'class-validator';
 
 export class CompleteUploadDto {
-  @IsString()
-  dealId!: string;
 
   @IsString()
   key!: string;
@@ -11,7 +9,7 @@ export class CompleteUploadDto {
   originalName!: string;
 
   @IsMimeType()
-  contentType!: string;
+  mimeType!: string;
 
   @IsNumber()
   size!: number;
