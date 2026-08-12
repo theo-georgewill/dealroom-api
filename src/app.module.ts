@@ -13,6 +13,8 @@ import { HealthController } from './modules/health/health.controller';
 import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { MailModule } from './integrations/mail/mail.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { PropertiesModule } from './modules/properties/properties.module';
 
 @Module({
   imports: [
@@ -30,12 +32,14 @@ import { MailModule } from './integrations/mail/mail.module';
     UsersModule,
     PrismaModule,
     DealsModule,
+    DocumentsModule,
     InvitationsModule,
     EscrowModule,
     PaymentsModule,
     BankAccountsModule,
     StorageModule,
     MailModule,
+    PropertiesModule,
   ],
   controllers: [HealthController],
   providers: [

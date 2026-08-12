@@ -1,4 +1,9 @@
-import { IsMimeType, IsNumber, IsString } from 'class-validator';
+import { 
+  IsMimeType, 
+  IsNumber, 
+  IsPositive, 
+  IsString
+} from 'class-validator';
 
 export class CompleteUploadDto {
 
@@ -12,5 +17,6 @@ export class CompleteUploadDto {
   mimeType!: string;
 
   @IsNumber()
+  @IsPositive()
   size!: number;
 }

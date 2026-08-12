@@ -10,7 +10,7 @@ import {
   IsString,
   Min,
   ValidateNested,
-  IsBoolean,
+  IsNotEmpty,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -20,64 +20,8 @@ import {
   FundingSource,
   ParticipantRole,
   PaymentStructure,
-  PropertyType,
 } from '@prisma/client';
 
-class PropertyImageDto {
-  @ApiProperty({
-    example: 'properties/deal_123/front.webp',
-  })
-  @IsString()
-  key!: string;
-
-  @ApiPropertyOptional({
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isPrimary?: boolean;
-}
-
-class CreatePropertyDto {
-  @ApiProperty()
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ enum: PropertyType })
-  @IsEnum(PropertyType)
-  type!: PropertyType;
-
-  @ApiProperty()
-  @IsString()
-  address!: string;
-
-  @ApiProperty()
-  @IsString()
-  city!: string;
-
-  @ApiProperty()
-  @IsString()
-  state!: string;
-
-  @ApiProperty()
-  @IsString()
-  country!: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({
-    type: [PropertyImageDto],
-    description: 'Object storage metadata for uploaded images.',
-  })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PropertyImageDto)
-  images?: PropertyImageDto[];
-}
 
 class CreateDealTermsDto {
   @ApiProperty({ enum: DealType })
@@ -165,11 +109,22 @@ export class CreateDealDto {
   @IsString()
   title!: string;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreatePropertyDto)
-  property!: CreatePropertyDto;
+  @ApiProperty({
+    description: 'The ID of the existing property associated with this deal.',
+    example: 'cmf2p3abc0000xyz123456789',
+  })
+  @IsString()
+  @IsNotEmpty()
+  propertyId!: string;
 
+  @ApiProperty({
+    enum: ParticipantRole,
+    description: 'The role of the authenticated user in this deal.',
+    example: ParticipantRole.SELLER,
+  })
+  @IsEnum(ParticipantRole)
+  creatorRole!: ParticipantRole;
+  
   @ApiProperty()
   @ValidateNested()
   @Type(() => CreateDealTermsDto)
