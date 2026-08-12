@@ -21,7 +21,7 @@ import { ListDealsDto } from './dto/list-deals.dto';
 import { DealsService } from './deals.service';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
-
+import { CreateDealDraftDto } from './dto/create-deal-draft.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { InvitationsService } from '../invitations/invitations.service';
@@ -40,6 +40,33 @@ export class DealsController {
     private readonly dealsService: DealsService,
     private readonly invitationsService: InvitationsService,
   ) {}
+
+  @Post('drafts')
+  @ApiOperation({
+    summary: 'Create a deal draft',
+    description:
+      'Creates a draft deal that can be completed progressively.',
+  })
+  @ApiBody({
+    type: CreateDealDraftDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Deal draft created successfully.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized.',
+  })
+  createDraft(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateDealDraftDto,
+  ) {
+    return this.dealsService.createDraft(
+      user.id,
+      dto,
+    );
+  }
 
   @Post()
   @ApiOperation({
@@ -81,6 +108,35 @@ export class DealsController {
     @Query() query: ListDealsDto,
   ) {
     return this.dealsService.findAll(user.id, query);
+  }
+
+  @Post(':id/publish')
+  @ApiOperation({
+    summary: 'Publish a deal',
+    description:
+      'Publishes a draft deal after all required deal information has been completed.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The unique identifier of the deal.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Deal published successfully.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Deal cannot be published.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Deal not found.',
+  })
+  publish(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.dealsService.publish(id, user.id);
   }
 
   @Get(':id')
