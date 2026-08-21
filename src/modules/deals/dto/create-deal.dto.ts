@@ -130,10 +130,11 @@ export class CreateDealDto {
   @Type(() => CreateDealTermsDto)
   terms!: CreateDealTermsDto;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @ValidateNested()
   @Type(() => CreateEscrowDto)
-  escrow!: CreateEscrowDto;
+  escrow?: CreateEscrowDto;
 
   @ApiProperty({
     type: [CreateParticipantDto],

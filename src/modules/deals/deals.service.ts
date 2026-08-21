@@ -202,24 +202,25 @@ export class DealsService {
               paymentStructure: dto.terms.paymentStructure,
             },
           },
+          ...(dto.escrow && {
+            escrow: {
+              create: {
+                amount: new Prisma.Decimal(dto.escrow.amount),
+                fundingSource: dto.escrow.fundingSource,
+                holdingPeriod: dto.escrow.holdingPeriod,
+                currency: dto.terms.currency,
 
-          escrow: {
-            create: {
-              amount: new Prisma.Decimal(dto.escrow.amount),
-              fundingSource: dto.escrow.fundingSource,
-              holdingPeriod: dto.escrow.holdingPeriod,
-              currency: dto.terms.currency,
-
-              releaseConditions: {
-                create: dto.escrow.releaseConditions.map(
-                  (description, index) => ({
-                    description,
-                    sortOrder: index + 1,
-                  }),
-                ),
+                releaseConditions: {
+                  create: dto.escrow.releaseConditions.map(
+                    (description, index) => ({
+                      description,
+                      sortOrder: index + 1,
+                    }),
+                  ),
+                },
               },
             },
-          },
+          })
         },
       });
 
@@ -251,7 +252,7 @@ export class DealsService {
         include: dealInclude,
       });
 
-      if (!createdDeal || !createdDeal.escrow) {
+      if (!createdDeal ) {
         throw new NotFoundException('Failed to load created deal');
       }
 
@@ -264,9 +265,9 @@ export class DealsService {
             progress: this.calculateProgress(createdDeal.status),
           },
           payment: {
-            escrowId: createdDeal.escrow.id,
-            amount: Number(createdDeal.escrow.amount),
-            currency: createdDeal.escrow.currency,
+            escrowId: createdDeal.escrow ? createdDeal.escrow.id : null,
+            amount: createdDeal.escrow ? Number(createdDeal.escrow.amount) : null,
+            currency: createdDeal.escrow ? createdDeal.escrow.currency : null,
           },
         },
       };

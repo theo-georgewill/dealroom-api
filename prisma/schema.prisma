@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,16 +6,316 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id                  String            @id @default(cuid())
+  firstName           String
+  lastName            String
+  email               String            @unique
+  phone               String?           @unique
+  password            String
+  avatar              String?
+  isEmailVerified     Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  status              UserStatus        @default(ACTIVE)
+  bankAccounts        BankAccount[]
+  createdDeals        Deal[]            @relation("DealCreator")
+  participants        DealParticipant[]
+  approvedDocuments   Document[]        @relation("DocumentApprover")
+  uploadedDocuments   Document[]        @relation("DocumentUploader")
+  acceptedInvitations Invitation[]      @relation("InvitationReceiver")
+  sentInvitations     Invitation[]      @relation("InvitationSender")
+  properties          Property[]
+  refreshTokens       RefreshToken[]
+  uploadedFiles       StorageFile[]     @relation("StorageFileUploader")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userId    String
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Property {
+  id          String          @id @default(cuid())
+  name        String
+  type        PropertyType
+  address     String
+  city        String
+  state       String
+  country     String
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  ownerId     String
+  status      PropertyStatus  @default(DRAFT)
+  deals       Deal[]
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  images      PropertyImage[]
+}
+
+model PropertyImage {
+  id            String      @id @default(cuid())
+  propertyId    String
+  storageFileId String      @unique
+  sortOrder     Int         @default(0)
+  isCover       Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  property      Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  storageFile   StorageFile @relation(fields: [storageFileId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+model Deal {
+  id           String            @id @default(cuid())
+  title        String
+  status       DealStatus        @default(DRAFT)
+  creatorId    String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  reference    String            @unique
+  propertyId   String?
+  creator      User              @relation("DealCreator", fields: [creatorId], references: [id])
+  property     Property?         @relation(fields: [propertyId], references: [id])
+  participants DealParticipant[]
+  terms        DealTerms?
+  documents    Document[]
+  escrow       Escrow?
+  invitations  Invitation[]
+
+  @@index([propertyId])
+}
+
+model DealTerms {
+  id               String           @id @default(cuid())
+  dealId           String           @unique
+  dealType         DealType
+  currency         Currency
+  dealValue        Decimal          @db.Decimal(15, 2)
+  earnestMoney     Decimal?         @db.Decimal(15, 2)
+  closingDate      DateTime
+  longStopDate     DateTime?
+  paymentStructure PaymentStructure
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deal             Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+}
+
+model DealParticipant {
+  id        String            @id @default(cuid())
+  dealId    String
+  userId    String
+  role      ParticipantRole
+  status    ParticipantStatus @default(PENDING)
+  joinedAt  DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  deal      Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([dealId, userId])
+}
+
+model Escrow {
+  id                String                   @id @default(cuid())
+  dealId            String                   @unique
+  amount            Decimal                  @db.Decimal(15, 2)
+  fundedAmount      Decimal                  @default(0) @db.Decimal(15, 2)
+  status            EscrowStatus             @default(PENDING)
+  fundedAt          DateTime?
+  releasedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  currency          Currency                 @default(NGN)
+  fundingSource     FundingSource
+  holdingPeriod     Int
+  deal              Deal                     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  releaseConditions EscrowReleaseCondition[]
+  transactions      EscrowTransaction[]
+  payments          Payment[]
+  transfers         Transfer[]
+}
+
+model EscrowReleaseCondition {
+  id          String   @id @default(cuid())
+  escrowId    String
+  description String
+  completed   Boolean  @default(false)
+  sortOrder   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  escrow      Escrow   @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+}
+
+model EscrowTransaction {
+  id                String            @id @default(cuid())
+  escrowId          String
+  providerReference String?           @unique
+  type              TransactionType
+  status            TransactionStatus
+  amount            Decimal           @db.Decimal(15, 2)
+  webhookPayload    Json?
+  createdAt         DateTime          @default(now())
+  ledgerReference   String            @unique
+  updatedAt         DateTime          @updatedAt
+  currency          Currency          @default(NGN)
+  escrow            Escrow            @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([escrowId])
+  @@index([status])
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  escrowId          String
+  merchantTxRef     String          @unique
+  checkoutReference String?
+  providerReference String?
+  provider          PaymentProvider @default(NOMBA)
+  amount            Decimal         @db.Decimal(15, 2)
+  status            PaymentStatus   @default(PENDING)
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  currency          Currency        @default(NGN)
+  escrow            Escrow          @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([merchantTxRef])
+  @@index([status])
+}
+
+model Transfer {
+  id                String         @id @default(cuid())
+  escrowId          String
+  merchantTxRef     String         @unique
+  providerReference String?
+  bankCode          String
+  accountNumber     String
+  accountName       String
+  amount            Decimal        @db.Decimal(15, 2)
+  status            TransferStatus @default(PENDING)
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  currency          Currency       @default(NGN)
+  escrow            Escrow         @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([merchantTxRef])
+  @@index([status])
+}
+
+model BankAccount {
+  id            String    @id @default(cuid())
+  userId        String
+  bankCode      String
+  accountNumber String
+  accountName   String
+  verifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, accountNumber])
+}
+
+model Invitation {
+  id           String           @id @default(cuid())
+  dealId       String
+  email        String
+  role         ParticipantRole
+  status       InvitationStatus @default(PENDING)
+  token        String           @unique
+  expiresAt    DateTime
+  acceptedById String?
+  createdAt    DateTime         @default(now())
+  invitedById  String
+  updatedAt    DateTime         @updatedAt
+  acceptedAt   DateTime?
+  cancelledAt  DateTime?
+  declinedAt   DateTime?
+  acceptedBy   User?            @relation("InvitationReceiver", fields: [acceptedById], references: [id])
+  deal         Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  invitedBy    User             @relation("InvitationSender", fields: [invitedById], references: [id])
+
+  @@unique([dealId, email])
+  @@index([dealId, email])
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  requestId   String    @unique
+  eventType   String
+  createdAt   DateTime  @default(now())
+  payload     Json
+  processed   Boolean   @default(false)
+  processedAt DateTime?
+  signature   String
+  updatedAt   DateTime  @updatedAt
+
+  @@index([processed])
+}
+
+model StorageFile {
+  id            String         @id @default(cuid())
+  originalName  String
+  mimeType      String
+  size          Int
+  bucket        String
+  key           String         @unique
+  uploadedById  String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  document      Document?
+  propertyImage PropertyImage?
+  uploadedBy    User           @relation("StorageFileUploader", fields: [uploadedById], references: [id])
+
+  @@index([uploadedById])
+}
+
+model Document {
+  id              String         @id @default(cuid())
+  title           String
+  description     String?
+  type            DocumentType
+  status          DocumentStatus @default(PENDING)
+  dealId          String
+  storageFileId   String         @unique
+  uploadedById    String
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  approvedBy      User?          @relation("DocumentApprover", fields: [approvedById], references: [id])
+  deal            Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  storageFile     StorageFile    @relation(fields: [storageFileId], references: [id], onDelete: Cascade)
+  uploadedBy      User           @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([dealId, createdAt])
+  @@index([type])
+  @@index([status])
+}
+
 enum DealStatus {
   DRAFT
   PENDING_PARTICIPANTS
   PENDING_FUNDING
   FUNDED
   DUE_DILIGENCE
-  DISPUTED
   RELEASE_REQUESTED
   COMPLETED
   CANCELLED
+  DISPUTED
 }
 
 enum ParticipantRole {
@@ -40,10 +335,10 @@ enum EscrowStatus {
   PENDING
   PARTIALLY_FUNDED
   FUNDED
-  RELEASING
   RELEASED
   REFUNDED
   FAILED
+  RELEASING
 }
 
 enum TransactionType {
@@ -148,312 +443,4 @@ enum PropertyStatus {
   DRAFT
   ACTIVE
   ARCHIVED
-}
-
-model User {
-  id                  String            @id @default(cuid())
-  firstName           String
-  lastName            String
-  email               String            @unique
-  phone               String?           @unique
-  password            String
-  avatar              String?
-  status              UserStatus        @default(ACTIVE)
-  isEmailVerified     Boolean           @default(false)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  createdDeals        Deal[]            @relation("DealCreator")
-  properties          Property[]
-  participants        DealParticipant[]
-  acceptedInvitations Invitation[]      @relation("InvitationReceiver")
-  sentInvitations     Invitation[]      @relation("InvitationSender")
-  refreshTokens       RefreshToken[]
-  bankAccounts        BankAccount[]
-  uploadedFiles       StorageFile[]     @relation("StorageFileUploader")
-  uploadedDocuments   Document[]        @relation("DocumentUploader")
-  approvedDocuments   Document[]        @relation("DocumentApprover")
-}
-
-model RefreshToken {
-  id        String    @id @default(cuid())
-  tokenHash String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-model Property {
-  id          String          @id @default(cuid())
-  ownerId     String
-  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  status      PropertyStatus  @default(DRAFT)
-  name        String
-  type        PropertyType
-  address     String
-  city        String
-  state       String
-  country     String
-  description String?
-  images      PropertyImage[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  deals Deal[]
-}
-
-model PropertyImage {
-  id String @id @default(cuid())
-
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  storageFileId String      @unique
-  storageFile   StorageFile @relation(fields: [storageFileId], references: [id], onDelete: Cascade)
-
-  sortOrder Int     @default(0)
-  isCover   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([propertyId])
-}
-
-model Deal {
-  id           String            @id @default(cuid())
-  title        String
-  status       DealStatus        @default(DRAFT)
-  reference    String            @unique
-  creatorId    String
-  creator      User              @relation("DealCreator", fields: [creatorId], references: [id])
-  propertyId   String?
-  property     Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  terms        DealTerms?
-  escrow       Escrow?
-  participants DealParticipant[]
-  invitations  Invitation[]
-  documents    Document[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
-  @@index([propertyId])
-}
-
-model DealTerms {
-  id               String           @id @default(cuid())
-  dealId           String           @unique
-  deal             Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  dealType         DealType
-  currency         Currency
-  dealValue        Decimal          @db.Decimal(15, 2)
-  earnestMoney     Decimal?         @db.Decimal(15, 2)
-  closingDate      DateTime
-  longStopDate     DateTime?
-  paymentStructure PaymentStructure
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-}
-
-model DealParticipant {
-  id        String            @id @default(cuid())
-  dealId    String
-  userId    String
-  role      ParticipantRole
-  status    ParticipantStatus @default(PENDING)
-  joinedAt  DateTime?
-  deal      Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  user      User              @relation(fields: [userId], references: [id])
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-
-  @@unique([dealId, userId])
-}
-
-model Escrow {
-  id                String                   @id @default(cuid())
-  dealId            String                   @unique
-  currency          Currency                 @default(NGN)
-  amount            Decimal                  @db.Decimal(15, 2)
-  fundedAmount      Decimal                  @default(0) @db.Decimal(15, 2)
-  fundingSource     FundingSource
-  holdingPeriod     Int
-  status            EscrowStatus             @default(PENDING)
-  fundedAt          DateTime?
-  releasedAt        DateTime?
-  deal              Deal                     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  payments          Payment[]
-  transfers         Transfer[]
-  transactions      EscrowTransaction[]
-  releaseConditions EscrowReleaseCondition[]
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
-}
-
-model EscrowReleaseCondition {
-  id          String   @id @default(cuid())
-  escrowId    String
-  escrow      Escrow   @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  description String
-  completed   Boolean  @default(false)
-  sortOrder   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model EscrowTransaction {
-  id                String            @id @default(cuid())
-  escrowId          String
-  ledgerReference   String            @unique
-  providerReference String?           @unique
-  currency          Currency          @default(NGN)
-  type              TransactionType
-  status            TransactionStatus
-  amount            Decimal           @db.Decimal(15, 2)
-  webhookPayload    Json?
-  escrow            Escrow            @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  @@index([escrowId])
-  @@index([status])
-}
-
-model Payment {
-  id                String          @id @default(cuid())
-  escrowId          String
-  escrow            Escrow          @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  merchantTxRef     String          @unique
-  checkoutReference String?
-  providerReference String?
-  provider          PaymentProvider @default(NOMBA)
-  amount            Decimal         @db.Decimal(15, 2)
-  currency          Currency        @default(NGN)
-  status            PaymentStatus   @default(PENDING)
-  paidAt            DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  @@index([merchantTxRef])
-  @@index([status])
-}
-
-model Transfer {
-  id                String         @id @default(cuid())
-  escrowId          String
-  escrow            Escrow         @relation(fields: [escrowId], references: [id], onDelete: Cascade)
-  merchantTxRef     String         @unique
-  providerReference String?
-  bankCode          String
-  accountNumber     String
-  accountName       String
-  amount            Decimal        @db.Decimal(15, 2)
-  currency          Currency       @default(NGN)
-  status            TransferStatus @default(PENDING)
-  completedAt       DateTime?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  @@index([merchantTxRef])
-  @@index([status])
-}
-
-model BankAccount {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  bankCode      String
-  accountNumber String
-  accountName   String
-  verifiedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([userId, accountNumber])
-}
-
-model Invitation {
-  id           String           @id @default(cuid())
-  dealId       String
-  email        String
-  role         ParticipantRole
-  status       InvitationStatus @default(PENDING)
-  token        String           @unique
-  expiresAt    DateTime
-  acceptedAt   DateTime?
-  declinedAt   DateTime?
-  cancelledAt  DateTime?
-  acceptedById String?
-  acceptedBy   User?            @relation("InvitationReceiver", fields: [acceptedById], references: [id])
-  invitedById  String
-  invitedBy    User             @relation("InvitationSender", fields: [invitedById], references: [id])
-  deal         Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-
-  @@unique([dealId, email])
-  @@index([dealId, email])
-}
-
-model WebhookEvent {
-  id          String    @id @default(cuid())
-  requestId   String    @unique
-  eventType   String
-  signature   String
-  payload     Json
-  processed   Boolean   @default(false)
-  processedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([processed])
-}
-
-model StorageFile {
-  id            String         @id @default(cuid())
-  originalName  String
-  mimeType      String
-  size          Int
-  bucket        String
-  key           String         @unique
-  uploadedById  String
-  uploadedBy    User           @relation("StorageFileUploader", fields: [uploadedById], references: [id])
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  document      Document?
-  propertyImage PropertyImage?
-
-  @@index([uploadedById])
-}
-
-model Document {
-  id            String         @id @default(cuid())
-  title         String
-  description   String?
-  type          DocumentType
-  status        DocumentStatus @default(PENDING)
-  dealId        String
-  deal          Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  storageFileId String         @unique
-  storageFile   StorageFile    @relation(fields: [storageFileId], references: [id], onDelete: Cascade)
-  uploadedById  String
-  uploadedBy    User           @relation("DocumentUploader", fields: [uploadedById], references: [id])
-  approvedById  String?
-  approvedBy    User?          @relation("DocumentApprover", fields: [approvedById], references: [id])
-
-  approvedAt DateTime?
-
-  rejectionReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([dealId, createdAt])
-  @@index([type])
-  @@index([status])
 }
